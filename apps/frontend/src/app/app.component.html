@@ -1,0 +1,396 @@
+<div class="app-container">
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="brand">
+      <span class="logo">⚡</span>
+      <h1>Bybit Stock Bot Sandbox</h1>
+    </div>
+    <div class="system-status">
+      <span class="status-dot"></span>
+      <span class="status-text">Backend: Connected</span>
+    </div>
+  </header>
+
+  <!-- Momentum Ticker (Breaking News) -->
+  @if (momentumStocks().length > 0) {
+    <div class="momentum-ticker">
+      <div class="ticker-label">
+        <span class="pulse"></span>
+        <span class="ticker-title">WEEKLY MOMENTUM LEADERBOARD</span>
+      </div>
+      <div class="ticker-track">
+        <div class="ticker-content">
+          @for (item of momentumStocks(); track item.symbol) {
+            <div class="ticker-item" (click)="selectAsset(item.symbol)" title="Click to view chart">
+              <div class="ticker-logo-container">
+                <img 
+                  [src]="getLogoUrl(item.symbol)" 
+                  (error)="onLogoError(item.symbol)" 
+                  *ngIf="!logoErrors().has(item.symbol); else tickerFallback"
+                  class="ticker-company-logo" 
+                  alt=""
+                />
+                <ng-template #tickerFallback>
+                  <div class="ticker-logo" [style.background-color]="getLogoColor(item.symbol)">
+                    {{ item.symbol.substring(0, 2) }}
+                  </div>
+                </ng-template>
+              </div>
+              <span class="ticker-symbol">{{ item.symbol }}</span>
+              <span class="ticker-price">${{ item.price.toFixed(2) }}</span>
+              <span class="ticker-pct">+{{ item.changePct.toFixed(1) }}%</span>
+            </div>
+          }
+          <!-- Duplicate loop for seamless infinite scroll animation -->
+          @for (item of momentumStocks(); track 'dup_' + item.symbol) {
+            <div class="ticker-item" (click)="selectAsset(item.symbol)" title="Click to view chart">
+              <div class="ticker-logo-container">
+                <img 
+                  [src]="getLogoUrl(item.symbol)" 
+                  (error)="onLogoError(item.symbol)" 
+                  *ngIf="!logoErrors().has(item.symbol); else tickerDupFallback"
+                  class="ticker-company-logo" 
+                  alt=""
+                />
+                <ng-template #tickerDupFallback>
+                  <div class="ticker-logo" [style.background-color]="getLogoColor(item.symbol)">
+                    {{ item.symbol.substring(0, 2) }}
+                  </div>
+                </ng-template>
+              </div>
+              <span class="ticker-symbol">{{ item.symbol }}</span>
+              <span class="ticker-price">${{ item.price.toFixed(2) }}</span>
+              <span class="ticker-pct">+{{ item.changePct.toFixed(1) }}%</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Main Content Layout -->
+  <main class="dashboard-grid">
+    
+    <!-- Sidebar: Asset Catalog -->
+    <aside class="sidebar card">
+      <div class="card-header">
+        <h2>Stock Catalog</h2>
+        <span class="badge">{{ filteredAssets().length }} Assets</span>
+      </div>
+      
+      <div class="search-box">
+        <input 
+          type="text" 
+          placeholder="Search stock tokens..." 
+          [ngModel]="searchQuery()" 
+          (ngModelChange)="searchQuery.set($event)"
+          class="input-search"
+        />
+      </div>
+
+      <div class="asset-list">
+        @if (isLoading()) {
+          <div class="loading-state">
+            <span class="spinner"></span>
+            <p>Loading catalog...</p>
+          </div>
+        } @else if (error()) {
+          <div class="error-state">
+            <p>{{ error() }}</p>
+            <button (click)="fetchAssets()" class="btn btn-secondary">Retry</button>
+          </div>
+        } @else {
+          @for (asset of filteredAssets(); track asset) {
+            <button 
+              (click)="selectAsset(asset)" 
+              [class.active]="selectedAsset() === asset"
+              class="asset-item"
+            >
+              <div class="asset-logo-container">
+                <img 
+                  [src]="getLogoUrl(asset)" 
+                  (error)="onLogoError(asset)" 
+                  *ngIf="!logoErrors().has(asset); else assetFallback"
+                  class="asset-company-logo"
+                  alt=""
+                />
+                <ng-template #assetFallback>
+                  <div class="asset-initials-logo" [style.background-color]="getLogoColor(asset)">
+                    {{ asset.substring(0, 2) }}
+                  </div>
+                </ng-template>
+              </div>
+              <span class="symbol-code">{{ asset }}</span>
+              <span class="arrow">→</span>
+            </button>
+          } @empty {
+            <div class="empty-state">
+              <p>No symbols match your search.</p>
+            </div>
+          }
+        }
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <section class="workspace">
+      
+      <!-- Chart Area -->
+      <div class="chart-container card">
+        <div class="chart-header">
+          <div class="title-area flex-align-center">
+            @if (selectedAsset()) {
+              <div class="header-logo-container">
+                <img 
+                  [src]="getLogoUrl(selectedAsset()!)" 
+                  (error)="onLogoError(selectedAsset()!)" 
+                  *ngIf="!logoErrors().has(selectedAsset()!); else headerFallback"
+                  class="header-company-logo"
+                  alt=""
+                />
+                <ng-template #headerFallback>
+                  <div class="header-initials-logo" [style.background-color]="getLogoColor(selectedAsset()!)">
+                    {{ selectedAsset()!.substring(0, 2) }}
+                  </div>
+                </ng-template>
+              </div>
+            }
+            <div>
+              <span class="label">Interactive Futures Chart</span>
+              <h2 class="asset-title">{{ selectedAsset() || 'No Asset Selected' }}</h2>
+            </div>
+          </div>
+          @if (selectedIndex() !== null && klines().length > 0) {
+            <div class="selected-candle-details">
+              <div class="detail-pill">
+                <span class="pill-label">O:</span>
+                <span class="pill-val">{{ klines()[selectedIndex()!].open.toFixed(2) }}</span>
+              </div>
+              <div class="detail-pill">
+                <span class="pill-label">H:</span>
+                <span class="pill-val">{{ klines()[selectedIndex()!].high.toFixed(2) }}</span>
+              </div>
+              <div class="detail-pill">
+                <span class="pill-label">L:</span>
+                <span class="pill-val">{{ klines()[selectedIndex()!].low.toFixed(2) }}</span>
+              </div>
+              <div class="detail-pill">
+                <span class="pill-label">C:</span>
+                <span class="pill-val Highlight">{{ klines()[selectedIndex()!].close.toFixed(2) }}</span>
+              </div>
+            </div>
+          }
+        </div>
+        
+        <!-- Canvas Element -->
+        <div class="canvas-wrapper">
+          <canvas #chartCanvas (click)="onChartClick($event)"></canvas>
+          <div class="chart-instruction">
+            <span>🖱️ Click anywhere on the chart timeline to evaluate the bot decisions at that specific interval.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls & Decision Evaluation Grid -->
+      <div class="evaluation-grid">
+        
+        <!-- Simulation Settings -->
+        <div class="card config-card">
+          <div class="card-header">
+            <h3>Simulated Position & Config</h3>
+          </div>
+          
+          <div class="config-form">
+            <div class="form-section-title">Position State</div>
+            <div class="form-row flex-row">
+              <div class="form-group flex-1">
+                <label>Side</label>
+                <select [ngModel]="simSide()" (ngModelChange)="simSide.set($event)" class="form-input">
+                  <option value="None">None (No Position)</option>
+                  <option value="Buy">Long (Buy)</option>
+                  <option value="Sell">Short (Sell)</option>
+                </select>
+              </div>
+              
+              @if (simSide() !== 'None') {
+                <div class="form-group flex-1">
+                  <label>Size (Units)</label>
+                  <input 
+                    type="number" 
+                    [ngModel]="simSize()" 
+                    (ngModelChange)="simSize.set(+$event)" 
+                    class="form-input" 
+                    min="0.001" 
+                    step="0.1"
+                  />
+                </div>
+                <div class="form-group flex-1">
+                  <label>Entry Price ($)</label>
+                  <input 
+                    type="number" 
+                    [ngModel]="simAvgPrice()" 
+                    (ngModelChange)="simAvgPrice.set(+$event)" 
+                    class="form-input" 
+                    min="0.01" 
+                    step="1"
+                  />
+                </div>
+              }
+            </div>
+
+            <div class="form-section-title">Bot Variables & Risk</div>
+            <div class="form-row grid-2">
+              <div class="form-group">
+                <label>Leverage</label>
+                <input 
+                  type="number" 
+                  [ngModel]="botLeverage()" 
+                  (ngModelChange)="botLeverage.set(+$event)" 
+                  class="form-input" 
+                  min="1" 
+                  max="100"
+                />
+              </div>
+              <div class="form-group">
+                <label>Balance ($)</label>
+                <input 
+                  type="number" 
+                  [ngModel]="botBalance()" 
+                  (ngModelChange)="botBalance.set(+$event)" 
+                  class="form-input" 
+                  min="1"
+                />
+              </div>
+              <div class="form-group">
+                <label>Take Profit (TP %)</label>
+                <input 
+                  type="number" 
+                  [ngModel]="profitThresholdPct()" 
+                  (ngModelChange)="profitThresholdPct.set(+$event)" 
+                  class="form-input" 
+                  min="1"
+                />
+              </div>
+              <div class="form-group">
+                <label>DCA Rebuy (DCA %)</label>
+                <input 
+                  type="number" 
+                  [ngModel]="rebuyThresholdPct()" 
+                  (ngModelChange)="rebuyThresholdPct.set(+$event)" 
+                  class="form-input" 
+                  min="1"
+                />
+              </div>
+              <div class="form-group">
+                <label>Reduce Size (Reduce %)</label>
+                <input 
+                  type="number" 
+                  [ngModel]="reducePct()" 
+                  (ngModelChange)="reducePct.set(+$event)" 
+                  class="form-input" 
+                  min="1" 
+                  max="100"
+                />
+              </div>
+              <div class="form-group">
+                <label>Max Alloc (% Balance)</label>
+                <input 
+                  type="number" 
+                  [ngModel]="maxAllocPct()" 
+                  (ngModelChange)="maxAllocPct.set(+$event)" 
+                  class="form-input" 
+                  min="1" 
+                  max="100"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Black Box Evaluation Result -->
+        <div class="card decision-card">
+          <div class="card-header">
+            <h3>Bot Engine Decision</h3>
+            @if (isEvaluating()) {
+              <span class="eval-spinner"></span>
+            }
+          </div>
+
+          <div class="decision-content">
+            @if (evaluationResult()) {
+              <!-- Entry Signal Scouting -->
+              <div class="eval-block">
+                <h4 class="block-title">1. Entry Signal Scouting</h4>
+                <div class="signal-badge-wrapper">
+                  <div 
+                    class="signal-badge" 
+                    [class.success]="evaluationResult()!.strategySignal.shouldEnter"
+                    [class.neutral]="!evaluationResult()!.strategySignal.shouldEnter"
+                  >
+                    {{ evaluationResult()!.strategySignal.shouldEnter ? '🚀 LONG ENTRY SIGNAL DETECTED' : '💤 NO ENTRY SIGNAL' }}
+                  </div>
+                </div>
+                
+                <div class="indicator-values">
+                  <div class="ind-pill">
+                    <span class="ind-name">MACD</span>
+                    <span class="ind-val" [class.green]="evaluationResult()!.strategySignal.macdValue > 0" [class.red]="evaluationResult()!.strategySignal.macdValue < 0">
+                      {{ evaluationResult()!.strategySignal.macdValue.toFixed(4) }}
+                    </span>
+                  </div>
+                  <div class="ind-pill">
+                    <span class="ind-name">Signal</span>
+                    <span class="ind-val">
+                      {{ evaluationResult()!.strategySignal.signalValue.toFixed(4) }}
+                    </span>
+                  </div>
+                  <div class="ind-pill">
+                    <span class="ind-name">Histogram</span>
+                    <span class="ind-val" [class.green]="evaluationResult()!.strategySignal.histValue > 0" [class.red]="evaluationResult()!.strategySignal.histValue < 0">
+                      {{ evaluationResult()!.strategySignal.histValue.toFixed(4) }}
+                    </span>
+                  </div>
+                </div>
+                <p class="explanation">
+                  Uptrend entry is triggered when the MACD line crosses above the Signal line (crossover) while both are <strong>strictly below 0</strong> on the 1D timeframe (USDT stock perpetual contracts only).
+                </p>
+              </div>
+
+              <!-- Position Management -->
+              <div class="eval-block border-top">
+                <h4 class="block-title">2. Position Management</h4>
+                <div class="action-card-wrapper">
+                  <div 
+                    class="action-badge" 
+                    [class.action-hold]="evaluationResult()!.positionDecision.action === 'HOLD'"
+                    [class.action-reduce]="evaluationResult()!.positionDecision.action === 'REDUCE'"
+                    [class.action-rebuy]="evaluationResult()!.positionDecision.action === 'DCA_REBUY'"
+                  >
+                    @if (evaluationResult()!.positionDecision.action === 'HOLD') {
+                      <span>🤝 HOLD POSITION</span>
+                    } @else if (evaluationResult()!.positionDecision.action === 'REDUCE') {
+                      <span>💰 TAKE PROFIT / REDUCE (Reduce Size by {{ evaluationResult()!.positionDecision.qty }} units)</span>
+                    } @else if (evaluationResult()!.positionDecision.action === 'DCA_REBUY') {
+                      <span>➕ DCA REBUY (Buy {{ evaluationResult()!.positionDecision.qty }} units)</span>
+                    }
+                  </div>
+                </div>
+                <div class="reason-log">
+                  <span class="log-label">Engine Log Output:</span>
+                  <p class="log-text">{{ evaluationResult()!.positionDecision.reason }}</p>
+                </div>
+              </div>
+            } @else {
+              <div class="decision-placeholder">
+                <span class="placeholder-icon">📊</span>
+                <p>Click on any point on the chart timeline to view the trading bot's simulated evaluation decision at that interval.</p>
+              </div>
+            }
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+  </main>
+</div>

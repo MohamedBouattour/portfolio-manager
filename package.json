@@ -1,0 +1,17 @@
+{
+  "name": "bybit-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/bot",
+    "apps/backend",
+    "apps/frontend"
+  ],
+  "scripts": {
+    "build:bot": "npm run build -w bybit-stock-bot",
+    "test:bot": "npm run test -w bybit-stock-bot",
+    "start:bot": "npm run start -w bybit-stock-bot",
+    "start:backend": "npm run start -w @monorepo/backend",
+    "start:frontend": "npm run start -w @monorepo/frontend"
+  }
+}
