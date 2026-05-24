@@ -248,55 +248,6 @@
         </div>
       </div>
 
-      <!-- Live Bot Scouting Status Card -->
-      @if (selectedAssetScouting(); as scouting) {
-        <div class="card scouting-status-card">
-          <div class="card-header">
-            <h3>Live Bot Scouting Status ({{ selectedAsset() }})</h3>
-            <span class="status-badge" [class.active]="scouting.shouldEnter">
-              {{ scouting.shouldEnter ? '🚨 ENTRY SIGNAL TRIGGERED' : '🔍 Live Scouting' }}
-            </span>
-          </div>
-          <div class="scouting-card-body">
-            <div class="scouting-summary">
-              <div class="scouting-status-desc">
-                @if (scouting.shouldEnter) {
-                  <span class="pulse-red"></span>
-                  <p class="status-msg signal">The bot has detected a valid <strong>Bullish MACD Crossover below 0</strong> on the 1D timeframe! Ready to enter a new LONG position.</p>
-                } @else {
-                  <span class="pulse-green"></span>
-                  <p class="status-msg">The bot is currently scouting this asset on Bybit. No entry signal has been detected for the current daily candle.</p>
-                }
-              </div>
-              <div class="scouting-metrics">
-                <div class="metric-box">
-                  <span class="metric-lbl">Live Price</span>
-                  <span class="metric-val">${{ scouting.price.toFixed(2) }}</span>
-                </div>
-                <div class="metric-box">
-                  <span class="metric-lbl">MACD Line</span>
-                  <span class="metric-val" [class.green]="scouting.macd > 0" [class.red]="scouting.macd < 0">
-                    {{ scouting.macd.toFixed(4) }}
-                  </span>
-                </div>
-                <div class="metric-box">
-                  <span class="metric-lbl">Signal Line</span>
-                  <span class="metric-val">
-                    {{ scouting.signal.toFixed(4) }}
-                  </span>
-                </div>
-                <div class="metric-box">
-                  <span class="metric-lbl">Histogram</span>
-                  <span class="metric-val" [class.green]="scouting.histogram > 0" [class.red]="scouting.histogram < 0">
-                    {{ scouting.histogram.toFixed(4) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
-
       <!-- Controls & Decision Evaluation Grid -->
       <div class="evaluation-grid">
         
@@ -416,7 +367,14 @@
         <!-- Black Box Evaluation Result -->
         <div class="card decision-card">
           <div class="card-header">
-            <h3>Bot Engine Decision</h3>
+            <div class="flex-row align-center gap-10">
+              <h3>Bot Engine Decision</h3>
+              @if (klines().length > 0 && selectedIndex() !== null) {
+                <span class="temporal-badge" [class.live]="selectedIndex() === klines().length - 1" [class.historical]="selectedIndex() !== klines().length - 1">
+                  {{ selectedIndex() === klines().length - 1 ? '🔴 LIVE' : '📅 HISTORICAL' }}
+                </span>
+              }
+            </div>
             @if (isEvaluating()) {
               <span class="eval-spinner"></span>
             }
@@ -458,7 +416,7 @@
                   </div>
                 </div>
                 <p class="explanation">
-                  Uptrend entry is triggered when the MACD line crosses above the Signal line (crossover) while both are <strong>strictly below 0</strong> on the 1D timeframe (USDT stock perpetual contracts only).
+                  Uptrend entry is triggered when the MACD line crosses above the Signal line (crossover) while both are <strong>strictly below 0</strong> on the {{ timeframe() }} timeframe (USDT stock perpetual contracts only).
                 </p>
               </div>
 

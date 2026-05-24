@@ -65,6 +65,7 @@ describe('TradingEngine Unit Tests', () => {
       reducePct: 15,
       maxAllocPct: 20, // 20% alloc -> $200 notional slice
       stockSymbols: ['AAPLUSDT', 'TSLAUSDT'],
+      dryRun: false,
     };
 
     mockStrategy = {

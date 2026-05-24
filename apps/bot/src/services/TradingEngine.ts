@@ -90,11 +90,19 @@ export class TradingEngine {
 
       // 1. Take Profit trigger
       if (pnl >= this.config.profitThresholdPct) {
-        log.ok(`[Scout Only] ${pos.symbol}: Take Profit trigger met at PnL: ${pnl.toFixed(2)}%. (No order placed)`);
+        if (this.config.dryRun) {
+          log.ok(`[Scout Only] ${pos.symbol}: Take Profit trigger met at PnL: ${pnl.toFixed(2)}%. (No order placed)`);
+        } else {
+          await this.handleTakeProfit(pos, spec, pnl);
+        }
       }
       // 2. Rebuy/DCA trigger
       else if (pnl <= -this.config.rebuyThresholdPct) {
-        log.ok(`[Scout Only] ${pos.symbol}: DCA Rebuy trigger met at PnL: ${pnl.toFixed(2)}%. (No order placed)`);
+        if (this.config.dryRun) {
+          log.ok(`[Scout Only] ${pos.symbol}: DCA Rebuy trigger met at PnL: ${pnl.toFixed(2)}%. (No order placed)`);
+        } else {
+          await this.handleRebuy(pos, spec, pnl);
+        }
       } else {
         log.info(`${pos.symbol}: no position action needed.`);
       }
@@ -137,7 +145,19 @@ export class TradingEngine {
       if (shouldEnter) {
         signalCount++;
         log.ok(`🚀 Strategy triggered entry signal for ${symbol}!`);
-        log.info(`[Scout Only] Would open new LONG position for ${symbol} at close price $${closes[closes.length - 1]}.`);
+        if (this.config.dryRun) {
+          log.info(`[Scout Only] Would open new LONG position for ${symbol} at close price $${closes[closes.length - 1]}.`);
+        } else {
+          const spec = await this.exchange.getInstrumentSpec(symbol);
+          if (spec) {
+            const lastClose = closes[closes.length - 1];
+            const success = await this.executeNewEntry(symbol, lastClose, spec);
+            if (success) {
+              // Cooldown between orders to prevent API rate limiting issues
+              await new Promise((resolve) => setTimeout(resolve, 300));
+            }
+          }
+        }
       }
     }
 

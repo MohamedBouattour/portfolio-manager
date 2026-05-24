@@ -52,4 +52,5 @@ export interface BotConfig {
   reducePct: number;
   maxAllocPct: number;
   stockSymbols: string[];
+  dryRun?: boolean;
 }

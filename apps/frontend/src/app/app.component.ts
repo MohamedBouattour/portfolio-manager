@@ -69,6 +69,7 @@ export class AppComponent implements OnInit {
   scoutingResults = signal<any[]>([]);
   latestLog = signal<string>('Loading logs...');
   latestLogTimestamp = signal<number>(0);
+  timeframe = signal<string>('1D');
   selectedAssetScouting = computed(() => {
     const asset = this.selectedAsset();
     if (!asset) return null;
@@ -128,10 +129,23 @@ export class AppComponent implements OnInit {
     this.fetchMomentum();
     this.fetchScoutingStatus();
     this.fetchLatestLog();
+    this.fetchConfig();
     setInterval(() => {
       this.fetchScoutingStatus();
       this.fetchLatestLog();
     }, 30000);
+  }
+
+  fetchConfig() {
+    this.http.get<{ timeframe: string }>(`${this.apiBase}/config`).subscribe({
+      next: (res) => {
+        const tf = res.timeframe === 'D' ? '1D' : res.timeframe === '240' ? '4h' : res.timeframe;
+        this.timeframe.set(tf);
+      },
+      error: (err) => {
+        console.error('Failed to fetch config', err);
+      }
+    });
   }
 
   fetchMomentum() {
@@ -258,7 +272,9 @@ export class AppComponent implements OnInit {
     const yyyy = date.getFullYear();
     const mm = (date.getMonth() + 1).toString().padStart(2, '0');
     const dd = date.getDate().toString().padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    const hh = date.getHours().toString().padStart(2, '0');
+    const min = date.getMinutes().toString().padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
   }
 
   getUptrendAssets(): any[] {

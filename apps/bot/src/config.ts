@@ -38,4 +38,7 @@ export const CFG: BotConfig = {
     }
     return raw.split(',').map(s => s.trim()).filter(Boolean);
   })(),
+
+  /** Dry run mode - defaults to true unless explicitly disabled */
+  dryRun: process.env.DRY_RUN !== 'false',
 };

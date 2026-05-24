@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Query, Body, HttpException, HttpStatus } from '@nestjs/common';
-import { BybitAdapter, MACDStrategy } from 'bybit-stock-bot';
+import { BybitAdapter, MACDStrategy, MIN_MACD_CANDLES } from 'bybit-stock-bot';
 import { RestClientV5 } from 'bybit-api';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -23,6 +23,8 @@ function getLogsDir() {
   return path.join(process.cwd(), 'logs');
 }
 
+const DEFAULT_TIMEFRAME = process.env.TIME_FRAME ?? '240';
+
 @Controller('api')
 export class AppController {
   private adapter: BybitAdapter;
@@ -43,6 +45,13 @@ export class AppController {
       secret: secretKey,
       testnet: false,
     });
+  }
+
+  @Get('config')
+  getConfig() {
+    return {
+      timeframe: DEFAULT_TIMEFRAME,
+    };
   }
 
   @Get('stocks')
@@ -80,7 +89,7 @@ export class AppController {
   }
 
   @Get('klines')
-  async getKlines(@Query('symbol') symbol: string, @Query('interval') interval = 'D') {
+  async getKlines(@Query('symbol') symbol: string, @Query('interval') interval = DEFAULT_TIMEFRAME) {
     if (!symbol) {
       throw new HttpException('Symbol query param is required', HttpStatus.BAD_REQUEST);
     }
@@ -243,7 +252,8 @@ export class AppController {
       logWrite('ℹ', `Discovered ${symbols.length} active TradFi stock symbols.`);
       const targetSymbols = symbols;
       const strategy = new MACDStrategy(12, 26, 9);
-      logWrite('ℹ', 'Evaluating MACD (12, 26, 9) crossover strategy on 1D interval...');
+      const tfName = DEFAULT_TIMEFRAME === 'D' ? '1D' : DEFAULT_TIMEFRAME === '240' ? '4h' : DEFAULT_TIMEFRAME;
+      logWrite('ℹ', `Evaluating MACD (12, 26, 9) crossover strategy on ${tfName} interval...`);
 
       const results = await Promise.all(
         targetSymbols.map(async (symbol) => {
@@ -251,7 +261,7 @@ export class AppController {
             const res = await this.client.getKline({
               category: 'linear',
               symbol,
-              interval: 'D',
+              interval: DEFAULT_TIMEFRAME as any,
               limit: 100,
             });
 
@@ -261,8 +271,8 @@ export class AppController {
               const closes = list.map((k: any) => parseFloat(k[4])).reverse();
               const { shouldEnter, latestValues } = strategy.evaluate(closes);
 
-              if (closes.length < 40) {
-                logWrite('⚠', `[Scout] ${symbol} | Only ${closes.length} candles (min 40 required) — MACD unreliable, skipping signal.`);
+              if (closes.length < MIN_MACD_CANDLES) {
+                logWrite('⚠', `[Scout] ${symbol} | Only ${closes.length} candles (min ${MIN_MACD_CANDLES} required) — MACD unreliable, skipping signal.`);
               } else if (latestValues) {
                 logWrite(
                   'ℹ',

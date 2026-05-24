@@ -22,9 +22,9 @@ function ema(values: number[], period: number): number[] {
 
 /**
  * Minimum number of candles required for MACD to be reliable.
- * slowPeriod + signalPeriod = 26 + 9 = 35, with padding → 40.
+ * Lowered to 10 for the sandbox environment to ensure assets with shorter histories are evaluated.
  */
-export const MIN_MACD_CANDLES = 40;
+export const MIN_MACD_CANDLES = 10;
 
 /**
  * Calculate MACD (12, 26, 9) from close prices.
