@@ -67,6 +67,8 @@ export class AppComponent implements OnInit {
   momentumStocks = signal<{ symbol: string; price: number; changePct: number }[]>([]);
   logoErrors = signal<Set<string>>(new Set());
   scoutingResults = signal<any[]>([]);
+  latestLog = signal<string>('Loading logs...');
+  latestLogTimestamp = signal<number>(0);
   selectedAssetScouting = computed(() => {
     const asset = this.selectedAsset();
     if (!asset) return null;
@@ -125,7 +127,11 @@ export class AppComponent implements OnInit {
     this.fetchAssets();
     this.fetchMomentum();
     this.fetchScoutingStatus();
-    setInterval(() => this.fetchScoutingStatus(), 30000);
+    this.fetchLatestLog();
+    setInterval(() => {
+      this.fetchScoutingStatus();
+      this.fetchLatestLog();
+    }, 30000);
   }
 
   fetchMomentum() {
@@ -146,6 +152,18 @@ export class AppComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to load scouting status', err);
+      }
+    });
+  }
+
+  fetchLatestLog() {
+    this.http.get<{ timestamp: number; content: string }>(`${this.apiBase}/logs/latest`).subscribe({
+      next: (res) => {
+        this.latestLog.set(res.content);
+        this.latestLogTimestamp.set(res.timestamp);
+      },
+      error: (err) => {
+        console.error('Failed to load latest log', err);
       }
     });
   }
@@ -240,9 +258,7 @@ export class AppComponent implements OnInit {
     const yyyy = date.getFullYear();
     const mm = (date.getMonth() + 1).toString().padStart(2, '0');
     const dd = date.getDate().toString().padStart(2, '0');
-    const hh = date.getHours().toString().padStart(2, '0');
-    const min = date.getMinutes().toString().padStart(2, '0');
-    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+    return `${yyyy}-${mm}-${dd}`;
   }
 
   getUptrendAssets(): any[] {

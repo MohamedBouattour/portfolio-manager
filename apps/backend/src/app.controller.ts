@@ -1,6 +1,27 @@
 import { Controller, Get, Post, Query, Body, HttpException, HttpStatus } from '@nestjs/common';
 import { BybitAdapter, MACDStrategy } from 'bybit-stock-bot';
 import { RestClientV5 } from 'bybit-api';
+import * as fs from 'fs';
+import * as path from 'path';
+
+function getLogsDir() {
+  let currentDir = process.cwd();
+  while (currentDir) {
+    const candidate = path.join(currentDir, 'logs');
+    if (fs.existsSync(path.join(currentDir, 'package.json'))) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(currentDir, 'package.json'), 'utf8'));
+        if (pkg.name === 'bybit-monorepo') {
+          return candidate;
+        }
+      } catch (e) {}
+    }
+    const parent = path.dirname(currentDir);
+    if (parent === currentDir) break;
+    currentDir = parent;
+  }
+  return path.join(process.cwd(), 'logs');
+}
 
 @Controller('api')
 export class AppController {
@@ -206,10 +227,23 @@ export class AppController {
       return this.scoutingCache;
     }
 
+    const logLines: string[] = [];
+    const logTimestamp = now;
+
+    const logWrite = (icon: string, msg: string) => {
+      const line = `[${new Date().toISOString()}] ${icon} ${msg}`;
+      logLines.push(line);
+      console.log(line);
+    };
+
+    logWrite('🚀', 'Starting Scouting evaluation cycle...');
+
     try {
       const symbols = await this.getStocks();
+      logWrite('ℹ', `Discovered ${symbols.length} active TradFi stock symbols.`);
       const targetSymbols = symbols;
       const strategy = new MACDStrategy(12, 26, 9);
+      logWrite('ℹ', 'Evaluating MACD (12, 26, 9) crossover strategy on 1D interval...');
 
       const results = await Promise.all(
         targetSymbols.map(async (symbol) => {
@@ -227,6 +261,20 @@ export class AppController {
               const closes = list.map((k: any) => parseFloat(k[4])).reverse();
               const { shouldEnter, latestValues } = strategy.evaluate(closes);
 
+              if (closes.length < 40) {
+                logWrite('⚠', `[Scout] ${symbol} | Only ${closes.length} candles (min 40 required) — MACD unreliable, skipping signal.`);
+              } else if (latestValues) {
+                logWrite(
+                  'ℹ',
+                  `[Scout] ${symbol} | Price: $${latestClose.toFixed(2)} | MACD: ${latestValues.macd.toFixed(4)} | Hist: ${latestValues.histogram.toFixed(4)} | Signal: ${latestValues.signal.toFixed(4)}`
+                );
+              }
+
+              if (shouldEnter) {
+                logWrite('✔', `🚀 STRATEGY TRIGGERED ENTRY SIGNAL FOR ${symbol}!`);
+                logWrite('ℹ', `[Scout Only] Would open new LONG position for ${symbol} at close price $${latestClose.toFixed(2)}.`);
+              }
+
               return {
                 symbol,
                 price: latestClose,
@@ -234,21 +282,71 @@ export class AppController {
                 signal: latestValues?.signal ?? 0,
                 histogram: latestValues?.histogram ?? 0,
                 shouldEnter,
+                candleCount: closes.length,
               };
             }
-          } catch (e) {
-            // Ignore error
+          } catch (e: any) {
+            logWrite('✖', `Error evaluating ${symbol}: ${e.message}`);
           }
           return null;
         })
       );
 
-      const filteredResults = results.filter((r) => r !== null);
+      const filteredResults = results.filter((r) => r !== null) as any[];
       this.scoutingCache = filteredResults;
       this.lastScoutTime = now;
+
+      logWrite('✔', `Scouting run completed. Found ${filteredResults.filter(r => r.shouldEnter).length} potential uptrends.`);
+
+      // Write logs to file
+      try {
+        const logsDir = getLogsDir();
+        if (!fs.existsSync(logsDir)) {
+          fs.mkdirSync(logsDir, { recursive: true });
+        }
+        const logFilePath = path.join(logsDir, `${logTimestamp}.log`);
+        fs.writeFileSync(logFilePath, logLines.join('\n'), 'utf8');
+      } catch (logErr: any) {
+        console.error('Failed to write backend scout log file:', logErr);
+      }
+
       return filteredResults;
     } catch (err: any) {
+      logWrite('✖', `Fatal scouting cycle error: ${err.message}`);
       throw new HttpException(err.message || 'Error getting scouting status', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Get('logs/latest')
+  async getLatestLog() {
+    try {
+      const logsDir = getLogsDir();
+      if (!fs.existsSync(logsDir)) {
+        return { timestamp: 0, content: 'No logs available. Wait for a bot execution or scout run.' };
+      }
+      const files = fs.readdirSync(logsDir)
+        .filter(f => f.endsWith('.log'))
+        .map(f => {
+          const name = f.replace('.log', '');
+          return {
+            filename: f,
+            timestamp: parseInt(name, 10) || 0
+          };
+        })
+        .sort((a, b) => b.timestamp - a.timestamp);
+
+      if (files.length === 0) {
+        return { timestamp: 0, content: 'No logs found. Run scouting or execute the bot to generate logs.' };
+      }
+
+      const latest = files[0];
+      const content = fs.readFileSync(path.join(logsDir, latest.filename), 'utf8');
+      return {
+        timestamp: latest.timestamp,
+        content
+      };
+    } catch (err: any) {
+      throw new HttpException(err.message || 'Failed to read latest log', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

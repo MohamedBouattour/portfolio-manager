@@ -492,9 +492,30 @@
                 <p>Click on any point on the chart timeline to view the trading bot's simulated evaluation decision at that interval.</p>
               </div>
             }
-          </div>
-        </div>
+          </div> <!-- closes .decision-content -->
+        </div> <!-- closes .decision-card -->
+      </div> <!-- closes .evaluation-grid -->
 
+      <!-- Bot Live Execution Log Console -->
+      <div class="card console-card">
+        <div class="card-header">
+          <div class="header-left flex-row align-center gap-10">
+            <span class="terminal-dots">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+            </span>
+            <h3>🤖 Bot Live Execution Log Console</h3>
+          </div>
+          @if (latestLogTimestamp() > 0) {
+            <span class="log-timestamp-badge">
+              Last Run: {{ formatCandleDate(latestLogTimestamp() / 1000) }}
+            </span>
+          }
+        </div>
+        <div class="console-body">
+          <pre class="console-output"><code>{{ latestLog() }}</code></pre>
+        </div>
       </div>
 
     </section>

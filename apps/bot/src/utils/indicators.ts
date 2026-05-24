@@ -21,6 +21,12 @@ function ema(values: number[], period: number): number[] {
 }
 
 /**
+ * Minimum number of candles required for MACD to be reliable.
+ * slowPeriod + signalPeriod = 26 + 9 = 35, with padding → 40.
+ */
+export const MIN_MACD_CANDLES = 40;
+
+/**
  * Calculate MACD (12, 26, 9) from close prices.
  * Returns array aligned with input (early values may be inaccurate).
  */
@@ -56,9 +62,18 @@ export function calcMACD(
  *
  * This is the "MACD cross under 0" pattern – a bullish momentum
  * shift while the trend is still in negative territory.
+ *
+ * IMPORTANT: Requires at least MIN_MACD_CANDLES data points to avoid
+ * false signals from insufficient EMA convergence.
  */
-export function isBullishCrossUnderZero(points: MACDPoint[]): boolean {
+export function isBullishCrossUnderZero(points: MACDPoint[], totalCandles?: number): boolean {
   if (points.length < 2) return false;
+
+  // Guard: reject signals when the candle history is too short for
+  // the EMA to have converged. Without enough data, the MACD values
+  // are unreliable and produce false crossovers.
+  const dataLen = totalCandles ?? points.length;
+  if (dataLen < MIN_MACD_CANDLES) return false;
 
   // Use the two most recent *completed* candles (skip the live candle)
   const prev = points[points.length - 2];
@@ -69,3 +84,4 @@ export function isBullishCrossUnderZero(points: MACDPoint[]): boolean {
 
   return crossedUp && belowZero;
 }
+

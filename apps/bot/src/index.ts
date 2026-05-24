@@ -6,6 +6,8 @@ import { log } from './utils/logger.js';
 
 async function main(): Promise<void> {
   const start = Date.now();
+  const timestamp = start;
+  log.startCapturing();
 
   log.sep();
   log.info('🚀 Scalable Stock-Token Trading Bot Starting...');
@@ -26,6 +28,8 @@ async function main(): Promise<void> {
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
   log.sep();
   log.ok(`Execution run complete in ${elapsed} seconds.`);
+
+  log.saveCapturedLogs(timestamp);
 }
 
 main().catch((err) => {
