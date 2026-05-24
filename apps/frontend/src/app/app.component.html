@@ -121,6 +121,9 @@
                 </ng-template>
               </div>
               <span class="symbol-code">{{ asset }}</span>
+              @if (hasScoutingSignal(asset)) {
+                <span class="sidebar-signal-badge" title="Active LONG ENTRY signal!">🚀</span>
+              }
               <span class="arrow">→</span>
             </button>
           } @empty {
@@ -163,6 +166,10 @@
           @if (selectedIndex() !== null && klines().length > 0) {
             <div class="selected-candle-details">
               <div class="detail-pill">
+                <span class="pill-label">Date:</span>
+                <span class="pill-val Highlight">{{ formatCandleDate(klines()[selectedIndex()!].time) }}</span>
+              </div>
+              <div class="detail-pill">
                 <span class="pill-label">O:</span>
                 <span class="pill-val">{{ klines()[selectedIndex()!].open.toFixed(2) }}</span>
               </div>
@@ -190,6 +197,105 @@
           </div>
         </div>
       </div>
+
+      <!-- Potential Uptrends Card -->
+      <div class="card potential-uptrends-card">
+        <div class="card-header">
+          <h3>🚀 Potential Uptrend Assets (Active Entry Signals)</h3>
+          <span class="scout-badge">
+            Scouting {{ scoutingResults().length }} Assets
+          </span>
+        </div>
+        <div class="scouting-card-body">
+          @if (getUptrendAssets().length > 0) {
+            <div class="uptrends-list">
+              @for (item of getUptrendAssets(); track item.symbol) {
+                <div class="uptrend-item" (click)="selectedAsset.set(item.symbol)">
+                  <div class="uptrend-symbol-info">
+                    @if (!logoErrors().has(item.symbol)) {
+                      <img [src]="getLogoUrl(item.symbol)" (error)="onLogoError(item.symbol)" class="uptrend-logo" alt="" />
+                    } @else {
+                      <div class="uptrend-logo fallback" [style.backgroundColor]="getLogoColor(item.symbol)">
+                        {{ item.symbol.substring(0, 2) }}
+                      </div>
+                    }
+                    <span class="symbol-name">{{ item.symbol }}</span>
+                  </div>
+                  <div class="uptrend-stats">
+                    <div class="stat">
+                      <span class="lbl">Price:</span>
+                      <span class="val">${{ item.price.toFixed(2) }}</span>
+                    </div>
+                    <div class="stat">
+                      <span class="lbl">MACD:</span>
+                      <span class="val" [class.green]="item.macd > 0" [class.red]="item.macd < 0">{{ item.macd.toFixed(4) }}</span>
+                    </div>
+                    <div class="stat">
+                      <span class="lbl">Hist:</span>
+                      <span class="val" [class.green]="item.histogram > 0" [class.red]="item.histogram < 0">{{ item.histogram.toFixed(4) }}</span>
+                    </div>
+                  </div>
+                  <button class="view-chart-btn">View Chart →</button>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="no-signals-state">
+              <span class="no-signals-icon">💤</span>
+              <p>No active bullish MACD entry signals scouted at this moment. The market is consolidating or in a downtrend.</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Live Bot Scouting Status Card -->
+      @if (selectedAssetScouting(); as scouting) {
+        <div class="card scouting-status-card">
+          <div class="card-header">
+            <h3>Live Bot Scouting Status ({{ selectedAsset() }})</h3>
+            <span class="status-badge" [class.active]="scouting.shouldEnter">
+              {{ scouting.shouldEnter ? '🚨 ENTRY SIGNAL TRIGGERED' : '🔍 Live Scouting' }}
+            </span>
+          </div>
+          <div class="scouting-card-body">
+            <div class="scouting-summary">
+              <div class="scouting-status-desc">
+                @if (scouting.shouldEnter) {
+                  <span class="pulse-red"></span>
+                  <p class="status-msg signal">The bot has detected a valid <strong>Bullish MACD Crossover below 0</strong> on the 1D timeframe! Ready to enter a new LONG position.</p>
+                } @else {
+                  <span class="pulse-green"></span>
+                  <p class="status-msg">The bot is currently scouting this asset on Bybit. No entry signal has been detected for the current daily candle.</p>
+                }
+              </div>
+              <div class="scouting-metrics">
+                <div class="metric-box">
+                  <span class="metric-lbl">Live Price</span>
+                  <span class="metric-val">${{ scouting.price.toFixed(2) }}</span>
+                </div>
+                <div class="metric-box">
+                  <span class="metric-lbl">MACD Line</span>
+                  <span class="metric-val" [class.green]="scouting.macd > 0" [class.red]="scouting.macd < 0">
+                    {{ scouting.macd.toFixed(4) }}
+                  </span>
+                </div>
+                <div class="metric-box">
+                  <span class="metric-lbl">Signal Line</span>
+                  <span class="metric-val">
+                    {{ scouting.signal.toFixed(4) }}
+                  </span>
+                </div>
+                <div class="metric-box">
+                  <span class="metric-lbl">Histogram</span>
+                  <span class="metric-val" [class.green]="scouting.histogram > 0" [class.red]="scouting.histogram < 0">
+                    {{ scouting.histogram.toFixed(4) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
 
       <!-- Controls & Decision Evaluation Grid -->
       <div class="evaluation-grid">

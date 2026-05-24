@@ -8,6 +8,10 @@ export class AppController {
   private client: RestClientV5;
   private momentumCache: any = null;
   private lastFetchTime = 0;
+  private scoutingCache: any = null;
+  private lastScoutTime = 0;
+  private stocksCache: string[] | null = null;
+  private lastStocksFetch = 0;
 
   constructor() {
     const apiKey = process.env.API_KEY || '';
@@ -22,24 +26,35 @@ export class AppController {
 
   @Get('stocks')
   async getStocks() {
+    const now = Date.now();
+    if (this.stocksCache && now - this.lastStocksFetch < 600000) {
+      return this.stocksCache;
+    }
     try {
       // Dynamic scanning of symbols
       const symbols = await this.adapter.getActiveStockSymbols();
       if (symbols && symbols.length > 0) {
+        this.stocksCache = symbols;
+        this.lastStocksFetch = now;
         return symbols;
       }
-      // Fallback in case of failure or empty
-      return [
+      const fallback = [
         'AAPLUSDT', 'TSLAUSDT', 'NVDAUSDT', 'AMZNUSDT', 'GOOGLUSDT',
         'MSFTUSDT', 'METAUSDT', 'COINUSDT', 'MSTRUSDT', 'AMDUSDT',
         'INTCUSDT', 'PLTRUSDT', 'QQQUSDT', 'SPYUSDT', 'TSMUSDT',
       ];
+      this.stocksCache = fallback;
+      this.lastStocksFetch = now;
+      return fallback;
     } catch (err: any) {
-      return [
+      const fallback = [
         'AAPLUSDT', 'TSLAUSDT', 'NVDAUSDT', 'AMZNUSDT', 'GOOGLUSDT',
         'MSFTUSDT', 'METAUSDT', 'COINUSDT', 'MSTRUSDT', 'AMDUSDT',
         'INTCUSDT', 'PLTRUSDT', 'QQQUSDT', 'SPYUSDT', 'TSMUSDT',
       ];
+      this.stocksCache = fallback;
+      this.lastStocksFetch = now;
+      return fallback;
     }
   }
 
@@ -181,6 +196,59 @@ export class AppController {
       };
     } catch (err: any) {
       throw new HttpException(err.message || 'Evaluation error', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Get('scouting-status')
+  async getScoutingStatus() {
+    const now = Date.now();
+    if (this.scoutingCache && now - this.lastScoutTime < 60000) {
+      return this.scoutingCache;
+    }
+
+    try {
+      const symbols = await this.getStocks();
+      const targetSymbols = symbols;
+      const strategy = new MACDStrategy(12, 26, 9);
+
+      const results = await Promise.all(
+        targetSymbols.map(async (symbol) => {
+          try {
+            const res = await this.client.getKline({
+              category: 'linear',
+              symbol,
+              interval: 'D',
+              limit: 100,
+            });
+
+            if (res.retCode === 0 && res.result?.list?.length >= 2) {
+              const list = res.result.list;
+              const latestClose = parseFloat(list[0][4]);
+              const closes = list.map((k: any) => parseFloat(k[4])).reverse();
+              const { shouldEnter, latestValues } = strategy.evaluate(closes);
+
+              return {
+                symbol,
+                price: latestClose,
+                macd: latestValues?.macd ?? 0,
+                signal: latestValues?.signal ?? 0,
+                histogram: latestValues?.histogram ?? 0,
+                shouldEnter,
+              };
+            }
+          } catch (e) {
+            // Ignore error
+          }
+          return null;
+        })
+      );
+
+      const filteredResults = results.filter((r) => r !== null);
+      this.scoutingCache = filteredResults;
+      this.lastScoutTime = now;
+      return filteredResults;
+    } catch (err: any) {
+      throw new HttpException(err.message || 'Error getting scouting status', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

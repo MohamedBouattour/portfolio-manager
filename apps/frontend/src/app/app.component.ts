@@ -66,6 +66,12 @@ export class AppComponent implements OnInit {
   evaluationResult = signal<EvaluationResult | null>(null);
   momentumStocks = signal<{ symbol: string; price: number; changePct: number }[]>([]);
   logoErrors = signal<Set<string>>(new Set());
+  scoutingResults = signal<any[]>([]);
+  selectedAssetScouting = computed(() => {
+    const asset = this.selectedAsset();
+    if (!asset) return null;
+    return this.scoutingResults().find(r => r.symbol === asset) || null;
+  });
 
   // States
   isLoading = signal<boolean>(false);
@@ -118,6 +124,8 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     this.fetchAssets();
     this.fetchMomentum();
+    this.fetchScoutingStatus();
+    setInterval(() => this.fetchScoutingStatus(), 30000);
   }
 
   fetchMomentum() {
@@ -127,6 +135,17 @@ export class AppComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to load momentum stocks', err);
+      }
+    });
+  }
+
+  fetchScoutingStatus() {
+    this.http.get<any[]>(`${this.apiBase}/scouting-status`).subscribe({
+      next: (data) => {
+        this.scoutingResults.set(data);
+      },
+      error: (err) => {
+        console.error('Failed to load scouting status', err);
       }
     });
   }
@@ -209,6 +228,25 @@ export class AppComponent implements OnInit {
     }
     const h = Math.abs(hash % 360);
     return `hsl(${h}, 60%, 40%)`;
+  }
+
+  hasScoutingSignal(symbol: string): boolean {
+    const res = this.scoutingResults().find(r => r.symbol === symbol);
+    return res ? res.shouldEnter : false;
+  }
+
+  formatCandleDate(timestamp: number): string {
+    const date = new Date(timestamp * 1000);
+    const yyyy = date.getFullYear();
+    const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+    const dd = date.getDate().toString().padStart(2, '0');
+    const hh = date.getHours().toString().padStart(2, '0');
+    const min = date.getMinutes().toString().padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  }
+
+  getUptrendAssets(): any[] {
+    return this.scoutingResults().filter(r => r.shouldEnter);
   }
 
   getLogoUrl(symbol: string): string {
@@ -374,12 +412,12 @@ export class AppComponent implements OnInit {
       ctx.lineTo(x, macdTop + macdHeight + 10);
       ctx.stroke();
 
-      // Format Date/Time (e.g. "05/23 16:00")
+      // Format Date (e.g. "2026-05-23")
       const date = new Date(data[i].time * 1000);
+      const yyyy = date.getFullYear();
       const m = (date.getMonth() + 1).toString().padStart(2, '0');
       const d = date.getDate().toString().padStart(2, '0');
-      const h = date.getHours().toString().padStart(2, '0');
-      const timeStr = `${m}/${d} ${h}:00`;
+      const timeStr = `${yyyy}-${m}-${d}`;
 
       // Label below main price chart (in the middle gap)
       ctx.fillText(timeStr, x, paddingTop + mainChartHeight + 18);

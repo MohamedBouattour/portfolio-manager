@@ -18,7 +18,7 @@ export class MACDStrategy implements Strategy {
    * Evaluate if a given series of close prices triggers a bullish crossover below 0.
    */
   public evaluate(closes: number[]): { shouldEnter: boolean; latestValues?: any } {
-    if (closes.length < this.slowPeriod + this.signalPeriod) {
+    if (closes.length < 2) {
       return { shouldEnter: false };
     }
 

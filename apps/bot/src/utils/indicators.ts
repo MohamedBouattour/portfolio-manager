@@ -30,7 +30,7 @@ export function calcMACD(
   slowPeriod = 26,
   signalPeriod = 9,
 ): MACDPoint[] {
-  if (closes.length < slowPeriod + signalPeriod) {
+  if (closes.length < 2) {
     return [];
   }
 

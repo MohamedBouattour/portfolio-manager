@@ -90,11 +90,11 @@ export class TradingEngine {
 
       // 1. Take Profit trigger
       if (pnl >= this.config.profitThresholdPct) {
-        await this.handleTakeProfit(pos, spec, pnl);
+        log.ok(`[Scout Only] ${pos.symbol}: Take Profit trigger met at PnL: ${pnl.toFixed(2)}%. (No order placed)`);
       }
       // 2. Rebuy/DCA trigger
       else if (pnl <= -this.config.rebuyThresholdPct) {
-        await this.handleRebuy(pos, spec, pnl);
+        log.ok(`[Scout Only] ${pos.symbol}: DCA Rebuy trigger met at PnL: ${pnl.toFixed(2)}%. (No order placed)`);
       } else {
         log.info(`${pos.symbol}: no position action needed.`);
       }
@@ -121,7 +121,7 @@ export class TradingEngine {
 
       // Fetch 200 candles (minimum needed for standard slow period + signal period + padding)
       const closes = await this.exchange.getCloses(symbol, this.config.interval, 200);
-      if (closes.length < 35) {
+      if (closes.length < 2) {
         log.warn(`${symbol}: insufficient candle history (${closes.length} candles).`);
         continue;
       }
@@ -137,16 +137,7 @@ export class TradingEngine {
       if (shouldEnter) {
         signalCount++;
         log.ok(`🚀 Strategy triggered entry signal for ${symbol}!`);
-
-        const spec = await this.exchange.getInstrumentSpec(symbol);
-        if (!spec) continue;
-
-        const lastClose = closes[closes.length - 1];
-        const success = await this.executeNewEntry(symbol, lastClose, spec);
-        if (success) {
-          // Cooldown between orders to prevent API rate limiting issues
-          await new Promise((resolve) => setTimeout(resolve, 300));
-        }
+        log.info(`[Scout Only] Would open new LONG position for ${symbol} at close price $${closes[closes.length - 1]}.`);
       }
     }
 
