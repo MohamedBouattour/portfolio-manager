@@ -1,6 +1,7 @@
 {
   "name": "bybit-monorepo",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "workspaces": [
     "services/bybit-connector",

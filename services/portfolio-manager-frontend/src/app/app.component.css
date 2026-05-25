@@ -1730,6 +1730,15 @@ canvas {
   transform: translateY(-1px);
 }
 
+/* Global color utilities for dynamic text coloring (e.g. PnL, MACD levels) */
+.green {
+  color: #10b981 !important;
+}
+.red {
+  color: #ef4444 !important;
+}
+
+
 
 
 
