@@ -6,6 +6,7 @@ const { mockAdapterInstance, mockClientInstance } = vi.hoisted(() => ({
     getActiveStockSymbols: vi.fn(),
     submitOrder: vi.fn(),
     setLeverage: vi.fn(),
+    getInstrumentSpec: vi.fn(),
   },
   mockClientInstance: {
     getKline: vi.fn(),
@@ -14,6 +15,16 @@ const { mockAdapterInstance, mockClientInstance } = vi.hoisted(() => ({
 
 vi.mock('bybit-stock-bot', () => ({
   BybitAdapter: function () { return mockAdapterInstance; },
+  roundQty: (raw: number, spec: any) => {
+    const step = spec.qtyStep;
+    const rounded = Math.floor(raw / step) * step;
+    const s = step.toString();
+    const dot = s.indexOf('.');
+    const decimals = dot === -1 ? 0 : s.length - dot - 1;
+    const fixed = parseFloat(rounded.toFixed(decimals));
+    if (fixed < spec.minQty) return 0;
+    return Math.min(fixed, spec.maxQty);
+  }
 }));
 
 vi.mock('bybit-api', () => ({
@@ -28,6 +39,16 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env.API_KEY = 'test-key';
   process.env.SECRET_KEY = 'test-secret';
+  mockAdapterInstance.getInstrumentSpec.mockResolvedValue({
+    symbol: 'X',
+    minQty: 0.01,
+    maxQty: 999999,
+    qtyStep: 0.01,
+    tickSize: 0.01,
+    minPrice: 0.01,
+    maxPrice: 999999,
+    minNotional: 0
+  });
   service = new BybitService();
 });
 

@@ -208,55 +208,7 @@
         </div>
       </div>
 
-      <!-- Potential Uptrends Card -->
-      <div class="card potential-uptrends-card">
-        <div class="card-header">
-          <h3>🚀 Potential Uptrend Assets (Active Entry Signals)</h3>
-          <span class="scout-badge">
-            Scouting {{ scoutingResults().length }} Assets
-          </span>
-        </div>
-        <div class="scouting-card-body">
-          @if (getUptrendAssets().length > 0) {
-            <div class="uptrends-list">
-              @for (item of getUptrendAssets(); track item.symbol) {
-                <div class="uptrend-item" (click)="selectedAsset.set(item.symbol)">
-                  <div class="uptrend-symbol-info">
-                    @if (!logoErrors().has(item.symbol)) {
-                      <img [src]="getLogoUrl(item.symbol)" (error)="onLogoError(item.symbol)" class="uptrend-logo" alt="" />
-                    } @else {
-                      <div class="uptrend-logo fallback" [style.backgroundColor]="getLogoColor(item.symbol)">
-                        {{ item.symbol.substring(0, 2) }}
-                      </div>
-                    }
-                    <span class="symbol-name">{{ item.symbol }}</span>
-                  </div>
-                  <div class="uptrend-stats">
-                    <div class="stat">
-                      <span class="lbl">Price:</span>
-                      <span class="val">${{ item.price.toFixed(2) }}</span>
-                    </div>
-                    <div class="stat">
-                      <span class="lbl">MACD:</span>
-                      <span class="val" [class.green]="item.macd > 0" [class.red]="item.macd < 0">{{ item.macd.toFixed(4) }}</span>
-                    </div>
-                    <div class="stat">
-                      <span class="lbl">Hist:</span>
-                      <span class="val" [class.green]="item.histogram > 0" [class.red]="item.histogram < 0">{{ item.histogram.toFixed(4) }}</span>
-                    </div>
-                  </div>
-                  <button class="view-chart-btn">View Chart →</button>
-                </div>
-              }
-            </div>
-          } @else {
-            <div class="no-signals-state">
-              <span class="no-signals-icon">💤</span>
-              <p>No active bullish MACD entry signals scouted at this moment. The market is consolidating or in a downtrend.</p>
-            </div>
-          }
-        </div>
-      </div>
+
 
       <!-- Active Bybit Portfolio Positions -->
       <div class="card positions-card">
@@ -350,6 +302,56 @@
             <div class="no-positions-state">
               <span class="positions-icon">💼</span>
               <p>No open positions on Bybit at the moment.</p>
+            </div>
+          }
+        </div>
+      </div>
+
+            <!-- Potential Uptrends Card -->
+      <div class="card potential-uptrends-card">
+        <div class="card-header">
+          <h3>🚀 Potential Uptrend Assets (Active Entry Signals)</h3>
+          <span class="scout-badge">
+            Scouting {{ scoutingResults().length }} Assets
+          </span>
+        </div>
+        <div class="scouting-card-body">
+          @if (getUptrendAssets().length > 0) {
+            <div class="uptrends-list">
+              @for (item of getUptrendAssets(); track item.symbol) {
+                <div class="uptrend-item" (click)="selectedAsset.set(item.symbol)">
+                  <div class="uptrend-symbol-info">
+                    @if (!logoErrors().has(item.symbol)) {
+                      <img [src]="getLogoUrl(item.symbol)" (error)="onLogoError(item.symbol)" class="uptrend-logo" alt="" />
+                    } @else {
+                      <div class="uptrend-logo fallback" [style.backgroundColor]="getLogoColor(item.symbol)">
+                        {{ item.symbol.substring(0, 2) }}
+                      </div>
+                    }
+                    <span class="symbol-name">{{ item.symbol }}</span>
+                  </div>
+                  <div class="uptrend-stats">
+                    <div class="stat">
+                      <span class="lbl">Price:</span>
+                      <span class="val">${{ item.price.toFixed(2) }}</span>
+                    </div>
+                    <div class="stat">
+                      <span class="lbl">MACD:</span>
+                      <span class="val" [class.green]="item.macd > 0" [class.red]="item.macd < 0">{{ item.macd.toFixed(4) }}</span>
+                    </div>
+                    <div class="stat">
+                      <span class="lbl">Hist:</span>
+                      <span class="val" [class.green]="item.histogram > 0" [class.red]="item.histogram < 0">{{ item.histogram.toFixed(4) }}</span>
+                    </div>
+                  </div>
+                  <button class="view-chart-btn">View Chart →</button>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="no-signals-state">
+              <span class="no-signals-icon">💤</span>
+              <p>No active bullish MACD entry signals scouted at this moment. The market is consolidating or in a downtrend.</p>
             </div>
           }
         </div>
@@ -451,6 +453,17 @@
                   type="number" 
                   [ngModel]="reducePct()" 
                   (ngModelChange)="reducePct.set(+$event)" 
+                  class="form-input" 
+                  min="1" 
+                  max="100"
+                />
+              </div>
+              <div class="form-group">
+                <label>Rebuy Size (Rebuy %)</label>
+                <input 
+                  type="number" 
+                  [ngModel]="rebuyQtyPct()" 
+                  (ngModelChange)="rebuyQtyPct.set(+$event)" 
                   class="form-input" 
                   min="1" 
                   max="100"

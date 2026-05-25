@@ -203,8 +203,20 @@ export class TradingEngine {
       log.info(`[Manual Mode] DCA Rebuy trigger met for ${pos.symbol} (PnL: ${currentPnL.toFixed(2)}%). Skipping automatic order execution.`);
       return;
     }
-    const targetNotional = this.config.balance * (this.config.maxAllocPct / 100);
-    const rawRebuyQty = targetNotional / pos.markPrice;
+
+    // Loop prevention check
+    if (pos.lastExecutionPrice && pos.lastExecutionSide === 'Buy') {
+      const priceDropThreshold = this.config.rebuyThresholdPct / pos.leverage;
+      const requiredPrice = pos.lastExecutionPrice * (1 - priceDropThreshold / 100);
+      if (pos.markPrice > requiredPrice) {
+        log.info(
+          `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% <= -${this.config.rebuyThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price $${pos.lastExecutionPrice.toFixed(2)}. Skipping DCA Rebuy.`
+        );
+        return;
+      }
+    }
+
+    const rawRebuyQty = pos.size * (this.config.rebuyQtyPct / 100);
     const qty = roundQty(rawRebuyQty, spec);
 
     if (qty <= 0) {

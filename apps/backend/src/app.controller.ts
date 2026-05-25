@@ -39,10 +39,12 @@ export class AppController {
   @Get('config')
   getConfig() {
     const isManual = process.env.MANUAL_MODE?.trim().toLowerCase() === 'true';
-    console.log(`[Backend Config] Request received. timeframe: ${DEFAULT_TIMEFRAME}, MANUAL_MODE env: '${process.env.MANUAL_MODE}', parsed: ${isManual}`);
+    const rebuyQtyPct = parseFloat(process.env.REBUY_QTY_PCT ?? '15');
+    console.log(`[Backend Config] Request received. timeframe: ${DEFAULT_TIMEFRAME}, MANUAL_MODE env: '${process.env.MANUAL_MODE}', parsed: ${isManual}, rebuyQtyPct: ${rebuyQtyPct}`);
     return {
       timeframe: DEFAULT_TIMEFRAME,
       manualMode: isManual,
+      rebuyQtyPct,
     };
   }
 
@@ -128,6 +130,8 @@ export class AppController {
         size: number;
         avgPrice: number;
         markPrice: number;
+        lastExecutionPrice?: number;
+        lastExecutionSide?: 'Buy' | 'Sell';
       };
       config?: {
         leverage: number;
@@ -135,6 +139,7 @@ export class AppController {
         profitThresholdPct: number;
         rebuyThresholdPct: number;
         reducePct: number;
+        rebuyQtyPct: number;
         maxAllocPct: number;
       };
     }
@@ -166,7 +171,7 @@ export class AppController {
         const profitThresholdPct = config?.profitThresholdPct ?? 15;
         const rebuyThresholdPct = config?.rebuyThresholdPct ?? 15;
         const reducePct = config?.reducePct ?? 15;
-        const maxAllocPct = config?.maxAllocPct ?? 20;
+        const rebuyQtyPct = config?.rebuyQtyPct ?? 15;
 
         // Calculate current position PnL based on markPrice at the evaluation index
         const currentMarkPrice = closes[index];
@@ -187,13 +192,29 @@ export class AppController {
             reason: `Take Profit triggered. PnL is +${pnlPct.toFixed(2)}% >= +${profitThresholdPct}%. Reducing position size by ${reducePct}%.`,
           };
         } else if (pnlPct <= -rebuyThresholdPct) {
-          const targetNotional = balance * (maxAllocPct / 100);
-          const rawRebuyQty = targetNotional / currentMarkPrice;
-          positionDecision = {
-            action: 'DCA_REBUY',
-            qty: parseFloat(rawRebuyQty.toFixed(4)),
-            reason: `DCA Rebuy triggered. PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThresholdPct}%. Adding position size.`,
-          };
+          // Loop prevention check
+          let skipped = false;
+          if (position.lastExecutionPrice && position.lastExecutionSide === 'Buy') {
+            const priceDropThreshold = rebuyThresholdPct / leverage;
+            const requiredPrice = position.lastExecutionPrice * (1 - priceDropThreshold / 100);
+            if (currentMarkPrice > requiredPrice) {
+              positionDecision = {
+                action: 'HOLD',
+                qty: 0,
+                reason: `PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThresholdPct}%, but price ($${currentMarkPrice.toFixed(2)}) has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price ($${position.lastExecutionPrice.toFixed(2)}). Skipping rebuy to prevent loop.`,
+              };
+              skipped = true;
+            }
+          }
+
+          if (!skipped) {
+            const rawRebuyQty = position.size * (rebuyQtyPct / 100);
+            positionDecision = {
+              action: 'DCA_REBUY',
+              qty: parseFloat(rawRebuyQty.toFixed(4)),
+              reason: `DCA Rebuy triggered. PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThresholdPct}%. Adding position size by ${rebuyQtyPct}%.`,
+            };
+          }
         } else {
           positionDecision = {
             action: 'HOLD',

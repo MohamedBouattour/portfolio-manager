@@ -3,3 +3,4 @@ export * from './utils/indicators.js';
 export * from './strategies/MACDStrategy.js';
 export * from './services/TradingEngine.js';
 export * from './adapters/bybit.js';
+export * from './utils/math.js';

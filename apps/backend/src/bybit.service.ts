@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BybitAdapter } from 'bybit-stock-bot';
+import { BybitAdapter, roundQty } from 'bybit-stock-bot';
 import { RestClientV5 } from 'bybit-api';
 
 @Injectable()
@@ -52,10 +52,17 @@ export class BybitService {
     if (leverage && !reduceOnly) {
       await this.adapter.setLeverage(symbol, leverage);
     }
+    const spec = await this.adapter.getInstrumentSpec(symbol);
+    const rounded = spec ? roundQty(qty, spec) : qty;
+
+    if (rounded <= 0) {
+      throw new Error(`Quantity rounded to 0 based on instrument minQty/qtyStep rules`);
+    }
+
     return await this.adapter.submitOrder({
       symbol,
       side,
-      qty,
+      qty: rounded,
       reduceOnly: !!reduceOnly,
     });
   }

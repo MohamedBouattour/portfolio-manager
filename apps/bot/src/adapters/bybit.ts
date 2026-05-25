@@ -38,7 +38,7 @@ export class BybitAdapter implements Exchange {
         console.log(`[BybitAdapter] Raw positions in list: ${symbolsAndSizes}`);
       }
 
-      const activePositions = list
+      const activePositions: Position[] = list
         .filter((p: any) => parseFloat(p.size) > 0)
         .map((p: any) => ({
           symbol: p.symbol as string,
@@ -50,6 +50,25 @@ export class BybitAdapter implements Exchange {
           positionValue: parseFloat(p.positionValue),
           leverage: parseFloat(p.leverage),
         }));
+
+      await Promise.all(
+        activePositions.map(async (pos) => {
+          try {
+            const execRes = await this.client.getExecutionList({
+              category: 'linear',
+              symbol: pos.symbol,
+              limit: 1,
+            });
+            const lastExec = execRes.result?.list?.[0];
+            if (lastExec) {
+              pos.lastExecutionPrice = parseFloat(lastExec.execPrice);
+              pos.lastExecutionSide = lastExec.side as 'Buy' | 'Sell';
+            }
+          } catch (e) {
+            console.error(`[BybitAdapter] Failed to fetch last execution for ${pos.symbol}:`, e);
+          }
+        })
+      );
 
       console.log(`[BybitAdapter] Filtered active positions (size > 0): ${activePositions.length}`);
       return activePositions;

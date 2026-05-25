@@ -63,6 +63,7 @@ describe('TradingEngine Unit Tests', () => {
       profitThresholdPct: 15,
       rebuyThresholdPct: 15,
       reducePct: 15,
+      rebuyQtyPct: 15,
       maxAllocPct: 20, // 20% alloc -> $200 notional slice
       stockSymbols: ['AAPLUSDT', 'TSLAUSDT'],
       dryRun: false,
@@ -215,13 +216,12 @@ describe('TradingEngine Unit Tests', () => {
       const engine = new TradingEngine(mockExchange, mockConfig, mockStrategy);
       await engine.run();
 
-      // Rebuy targetNotional = balance * maxAllocPct = 1000 * 20% = $200.
-      // Rebuy qty = 200 / 94 = 2.1276. Rounded to 0.01 step -> 2.12.
+      // Rebuy qty = size (10) * rebuyQtyPct (15%) = 1.5 units.
       expect(submittedOrders).toHaveLength(1);
       expect(submittedOrders[0]).toEqual({
         symbol: 'AAPLUSDT',
         side: 'Buy',
-        qty: 2.12,
+        qty: 1.5,
         reduceOnly: false,
       });
     });
@@ -240,14 +240,61 @@ describe('TradingEngine Unit Tests', () => {
         },
       ];
 
-      // Increase allocation to exceed balance limits
-      mockConfig.balance = 60;
-      mockConfig.maxAllocPct = 300; // 300% of $60 = $180 target notional -> requires ~$60 margin, exceeding 95% of $60 ($57)
+      // Increase rebuyQtyPct and decrease balance to exceed limits
+      mockConfig.balance = 10;
+      mockConfig.rebuyQtyPct = 300; // 300% of 10 units = 30 units -> requires margin = (30 * 94)/3 = 940 margin, exceeding 95% of $10 ($9.50)
 
       const engine = new TradingEngine(mockExchange, mockConfig, mockStrategy);
       await engine.run();
 
       expect(submittedOrders).toHaveLength(0);
+    });
+
+    it('should skip DCA Rebuy if mark price has not dropped enough since last execution (loop prevention)', async () => {
+      mockPositions = [
+        {
+          symbol: 'AAPLUSDT',
+          side: 'Buy',
+          size: 10,
+          avgPrice: 100,
+          markPrice: 94,
+          unrealisedPnl: -60,
+          positionValue: 1000,
+          leverage: 3,
+          lastExecutionPrice: 95, // last execution at 95
+          lastExecutionSide: 'Buy',
+        },
+      ];
+
+      // Required price drop = rebuyThresholdPct (15) / leverage (3) = 5% drop below 95 = 90.25
+      // Current markPrice 94 is > 90.25, so it should skip the rebuy.
+      const engine = new TradingEngine(mockExchange, mockConfig, mockStrategy);
+      await engine.run();
+
+      expect(submittedOrders).toHaveLength(0);
+    });
+
+    it('should execute DCA Rebuy if mark price has dropped enough since last execution (loop prevention)', async () => {
+      mockPositions = [
+        {
+          symbol: 'AAPLUSDT',
+          side: 'Buy',
+          size: 10,
+          avgPrice: 100,
+          markPrice: 90, // price dropped to 90 (below 90.25 required)
+          unrealisedPnl: -100,
+          positionValue: 1000,
+          leverage: 3,
+          lastExecutionPrice: 95,
+          lastExecutionSide: 'Buy',
+        },
+      ];
+
+      const engine = new TradingEngine(mockExchange, mockConfig, mockStrategy);
+      await engine.run();
+
+      expect(submittedOrders).toHaveLength(1);
+      expect(submittedOrders[0].qty).toBe(1.5);
     });
   });
 

@@ -7,6 +7,8 @@ export interface Position {
   unrealisedPnl: number;
   positionValue: number;
   leverage: number;
+  lastExecutionPrice?: number;
+  lastExecutionSide?: 'Buy' | 'Sell';
 }
 
 export interface InstrumentSpec {
@@ -50,6 +52,7 @@ export interface BotConfig {
   profitThresholdPct: number;
   rebuyThresholdPct: number;
   reducePct: number;
+  rebuyQtyPct: number;
   maxAllocPct: number;
   stockSymbols: string[];
   dryRun?: boolean;

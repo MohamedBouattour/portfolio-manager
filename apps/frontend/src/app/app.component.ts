@@ -46,6 +46,8 @@ interface Position {
   unrealisedPnl: number;
   positionValue: number;
   leverage: number;
+  lastExecutionPrice?: number;
+  lastExecutionSide?: 'Buy' | 'Sell';
 }
 
 @Component({
@@ -116,8 +118,7 @@ export class AppComponent implements OnInit {
     const profitThreshold = this.profitThresholdPct();
     const rebuyThreshold = this.rebuyThresholdPct();
     const reduce = this.reducePct();
-    const balance = this.botBalance();
-    const maxAlloc = this.maxAllocPct();
+    const rebuyQtyPct = this.rebuyQtyPct();
 
     if (pnlPct >= profitThreshold) {
       const qtyToReduce = pos.size * (reduce / 100);
@@ -127,12 +128,24 @@ export class AppComponent implements OnInit {
         reason: `Take Profit triggered. PnL is +${pnlPct.toFixed(2)}% >= +${profitThreshold}%. Reducing position size by ${reduce}%.`
       };
     } else if (pnlPct <= -rebuyThreshold) {
-      const targetNotional = balance * (maxAlloc / 100);
-      const rawRebuyQty = targetNotional / pos.markPrice;
+      // Loop prevention check
+      if (pos.lastExecutionPrice && pos.lastExecutionSide === 'Buy') {
+        const priceDropThreshold = rebuyThreshold / pos.leverage;
+        const requiredPrice = pos.lastExecutionPrice * (1 - priceDropThreshold / 100);
+        if (pos.markPrice > requiredPrice) {
+          return {
+            action: 'HOLD',
+            qty: 0,
+            reason: `PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThreshold}%, but price ($${pos.markPrice.toFixed(2)}) has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price ($${pos.lastExecutionPrice.toFixed(2)}). Skipping rebuy to prevent loop.`
+          };
+        }
+      }
+
+      const qty = pos.size * (rebuyQtyPct / 100);
       return {
         action: 'DCA_REBUY',
-        qty: parseFloat(rawRebuyQty.toFixed(4)),
-        reason: `DCA Rebuy triggered. PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThreshold}%. Adding position size.`
+        qty: parseFloat(qty.toFixed(4)),
+        reason: `DCA Rebuy triggered. PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThreshold}%. Adding position size by ${rebuyQtyPct}%.`
       };
     } else {
       return {
@@ -240,6 +253,7 @@ export class AppComponent implements OnInit {
   profitThresholdPct = signal<number>(15);
   rebuyThresholdPct = signal<number>(15);
   reducePct = signal<number>(15);
+  rebuyQtyPct = signal<number>(15);
   maxAllocPct = signal<number>(20);
 
   constructor() {
@@ -266,6 +280,7 @@ export class AppComponent implements OnInit {
         this.profitThresholdPct();
         this.rebuyThresholdPct();
         this.reducePct();
+        this.rebuyQtyPct();
         this.maxAllocPct();
 
         // Run evaluation
@@ -289,11 +304,14 @@ export class AppComponent implements OnInit {
   }
 
   fetchConfig() {
-    this.http.get<{ timeframe: string; manualMode?: boolean }>(`${this.apiBase}/config`).subscribe({
+    this.http.get<{ timeframe: string; manualMode?: boolean; rebuyQtyPct?: number }>(`${this.apiBase}/config`).subscribe({
       next: (res) => {
         const tf = res.timeframe === 'D' ? '1D' : res.timeframe === '240' ? '4h' : res.timeframe === '60' ? '1h' : res.timeframe;
         this.timeframe.set(tf);
         this.manualMode.set(!!res.manualMode);
+        if (res.rebuyQtyPct !== undefined) {
+          this.rebuyQtyPct.set(res.rebuyQtyPct);
+        }
       },
       error: (err) => {
         console.error('Failed to fetch config', err);
@@ -547,16 +565,20 @@ export class AppComponent implements OnInit {
         profitThresholdPct: this.profitThresholdPct(),
         rebuyThresholdPct: this.rebuyThresholdPct(),
         reducePct: this.reducePct(),
+        rebuyQtyPct: this.rebuyQtyPct(),
         maxAllocPct: this.maxAllocPct(),
       }
     };
 
     if (this.simSide() !== 'None') {
+      const activePosition = this.openPositions().find(p => p.symbol === asset);
       body.position = {
         side: this.simSide(),
         size: this.simSize(),
         avgPrice: this.simAvgPrice(),
-        markPrice: data[idx].close
+        markPrice: data[idx].close,
+        lastExecutionPrice: activePosition?.lastExecutionPrice,
+        lastExecutionSide: activePosition?.lastExecutionSide,
       };
     }
 

@@ -42,6 +42,8 @@ export const CFG: BotConfig = {
   rebuyThresholdPct: parseFloat(process.env.REBUY_THRESHOLD_PCT ?? '15'),
   /** % of position to close on take-profit */
   reducePct: parseFloat(process.env.POSITION_REDUCE_PCT ?? '15'),
+  /** % of position size to buy on DCA rebuy */
+  rebuyQtyPct: parseFloat(process.env.REBUY_QTY_PCT ?? '15'),
 
   /** Max allocation per symbol as fraction of BALANCE */
   maxAllocPct: parseFloat(process.env.MAX_ALLOC_PCT ?? '20'),
