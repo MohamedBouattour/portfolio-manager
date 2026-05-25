@@ -1738,7 +1738,29 @@ canvas {
   color: #ef4444 !important;
 }
 
+/* Timeframe Selector Styles */
+.timeframe-select-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
+.timeframe-select {
+  background: #0f172a;
+  border: 1px solid rgba(71, 85, 105, 0.7);
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  height: 32px;
+  box-sizing: border-box;
+}
 
-
-
+.timeframe-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}

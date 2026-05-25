@@ -1,12 +1,10 @@
 import { Controller, Get, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
 import { ConnectorExchangeService } from '../services/connector-exchange.service.js';
 import { TradingEngineService } from '../services/trading-engine.service.js';
-import { getLogsDir } from '@portfolio/contracts/utils';
+import { getLogsDir, getTimeframe, setTimeframe } from '@portfolio/contracts/utils';
 import { roundQty } from '../utils/math.js';
 import * as fs from 'fs';
 import * as path from 'path';
-
-const DEFAULT_TIMEFRAME = process.env.TIME_FRAME ?? '240';
 
 @Controller('api')
 export class PortfolioController {
@@ -19,9 +17,10 @@ export class PortfolioController {
   getConfig() {
     const isManual = process.env.MANUAL_MODE?.trim().toLowerCase() === 'true';
     const rebuyQtyPct = parseFloat(process.env.REBUY_QTY_PCT ?? '15');
-    console.log(`[Portfolio Config] Request received. timeframe: ${DEFAULT_TIMEFRAME}, MANUAL_MODE env: '${process.env.MANUAL_MODE}', parsed: ${isManual}, rebuyQtyPct: ${rebuyQtyPct}`);
+    const tf = getTimeframe();
+    console.log(`[Portfolio Config] Request received. timeframe: ${tf}, MANUAL_MODE env: '${process.env.MANUAL_MODE}', parsed: ${isManual}, rebuyQtyPct: ${rebuyQtyPct}`);
     return {
-      timeframe: DEFAULT_TIMEFRAME,
+      timeframe: tf,
       manualMode: isManual,
       rebuyQtyPct,
       balance: parseFloat(process.env.BALANCE || '689'),
@@ -32,6 +31,15 @@ export class PortfolioController {
       reducePct: parseFloat(process.env.REDUCE_PCT || process.env.POSITION_REDUCE_PCT || '15'),
       maxAllocPct: parseFloat(process.env.MAX_ALLOC_PCT || '20'),
     };
+  }
+
+  @Post('config')
+  async updateConfig(@Body() body: { timeframe?: string }) {
+    if (body.timeframe) {
+      setTimeframe(body.timeframe);
+      console.log(`[Portfolio Config] Timeframe updated to: ${body.timeframe}`);
+    }
+    return this.getConfig();
   }
 
   @Get('positions')

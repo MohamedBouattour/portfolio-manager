@@ -8,7 +8,21 @@ import { StateService } from '../../core/services/state.service.js';
   template: `
     <div class="card potential-uptrends-card">
       <div class="card-header">
-        <h3>🚀 Potential Uptrend Assets (Active Entry Signals)</h3>
+        <div class="flex-row align-center gap-10">
+          <h3>🚀 Potential Uptrend Assets (Active Entry Signals)</h3>
+          <div class="timeframe-select-container">
+            <span class="label">Timeframe:</span>
+            <select 
+              [value]="state.timeframe()" 
+              (change)="onTimeframeChange($any($event.target).value)"
+              class="timeframe-select"
+            >
+              <option value="1h">1h (60m)</option>
+              <option value="4h">4h (240m)</option>
+              <option value="1D">1D (Daily)</option>
+            </select>
+          </div>
+        </div>
         <span class="scout-badge">
           Scouting {{ state.scoutingResults().length }} Assets
         </span>
@@ -76,4 +90,8 @@ import { StateService } from '../../core/services/state.service.js';
 })
 export class UptrendScouterComponent {
   state = inject(StateService);
+
+  onTimeframeChange(tf: string) {
+    this.state.updateTimeframe(tf);
+  }
 }

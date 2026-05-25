@@ -253,6 +253,28 @@ export class StateService {
     });
   }
 
+  updateTimeframe(tf: string) {
+    const backendTf = tf === '1D' ? 'D' : tf === '4h' ? '240' : tf === '1h' ? '60' : tf;
+    this.http.post<{ timeframe: string }>(`${this.apiBase}/config`, { timeframe: backendTf }).subscribe({
+      next: (res) => {
+        const newTf = res.timeframe === 'D' ? '1D' : res.timeframe === '240' ? '4h' : res.timeframe === '60' ? '1h' : res.timeframe;
+        this.timeframe.set(newTf);
+        
+        // Refresh chart data
+        const currentAsset = this.selectedAsset();
+        if (currentAsset) {
+          this.selectAsset(currentAsset);
+        }
+        
+        // Refresh scouting results
+        this.fetchScoutingStatus();
+      },
+      error: (err) => {
+        console.error('Failed to update timeframe config', err);
+      }
+    });
+  }
+
   fetchOpenPositions() {
     this.http.get<Position[]>(`${this.apiBase}/positions`).subscribe({
       next: (data) => {
@@ -375,7 +397,9 @@ export class StateService {
     this.isLoading.set(true);
     this.error.set(null);
 
-    this.http.get<Kline[]>(`${this.apiBase}/klines?symbol=${asset}`).subscribe({
+    const tf = this.timeframe();
+    const interval = tf === '1D' ? 'D' : tf === '4h' ? '240' : tf === '1h' ? '60' : tf;
+    this.http.get<Kline[]>(`${this.apiBase}/klines?symbol=${asset}&interval=${interval}`).subscribe({
       next: (data) => {
         this.klines.set(data);
         this.isLoading.set(false);
@@ -412,7 +436,7 @@ export class StateService {
   }
 
   getLogoUrl(symbol: string): string {
-    return `logos/${symbol}.png`;
+    return `/logos/${symbol}.png`;
   }
 
   onLogoError(symbol: string) {

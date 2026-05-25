@@ -1,24 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { MACDStrategy } from '../strategies/macd.strategy.js';
 import { StrategyEvaluatorService } from './strategy-evaluator.service.js';
-import { getLogsDir } from '@portfolio/contracts/utils';
+import { getLogsDir, getTimeframe } from '@portfolio/contracts/utils';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 
 const CONNECTOR_URL = process.env.BYBIT_CONNECTOR_URL || 'http://localhost:3001';
-const DEFAULT_TIMEFRAME = process.env.TIME_FRAME ?? '240';
 
 @Injectable()
 export class ScoutingService {
   private cache: any = null;
   private lastFetchTime = 0;
+  private cachedTimeframe = '';
 
   constructor(private readonly evaluator: StrategyEvaluatorService) {}
 
   async getScoutingStatus() {
     const now = Date.now();
-    if (this.cache && now - this.lastFetchTime < 60000) {
+    const tf = getTimeframe();
+    if (this.cache && this.cachedTimeframe === tf && now - this.lastFetchTime < 60000) {
       return this.cache;
     }
 
@@ -49,21 +50,21 @@ export class ScoutingService {
 
       logWrite('ℹ', `Discovered ${symbols.length} active TradFi stock symbols.`);
       const strategy = new MACDStrategy(12, 26, 9);
-      const tfName = DEFAULT_TIMEFRAME === 'D' ? '1D' : DEFAULT_TIMEFRAME === '240' ? '4h' : DEFAULT_TIMEFRAME === '60' ? '1h' : DEFAULT_TIMEFRAME;
+      const tfName = tf === 'D' ? '1D' : tf === '240' ? '4h' : tf === '60' ? '1h' : tf;
       logWrite('ℹ', `Evaluating MACD (12, 26, 9) crossover strategy on ${tfName} interval...`);
 
       const minCandles = this.evaluator.getMinCandles();
 
       const results = await Promise.all(
-        symbols.map(async (symbol) => {
-          try {
-            const res = await axios.get(`${CONNECTOR_URL}/api/klines`, {
-              params: {
-                symbol,
-                interval: DEFAULT_TIMEFRAME,
-                limit: 100,
-              }
-            });
+          symbols.map(async (symbol) => {
+            try {
+              const res = await axios.get(`${CONNECTOR_URL}/api/klines`, {
+                params: {
+                  symbol,
+                  interval: tf,
+                  limit: 100,
+                }
+              });
 
             const klines = res.data;
             if (Array.isArray(klines) && klines.length >= 2) {
@@ -105,6 +106,7 @@ export class ScoutingService {
       const filteredResults = results.filter((r) => r !== null) as any[];
       this.cache = filteredResults;
       this.lastFetchTime = now;
+      this.cachedTimeframe = tf;
 
       logWrite('✔', `Scouting run completed. Found ${filteredResults.filter(r => r.shouldEnter).length} potential uptrends.`);
 

@@ -20,6 +20,18 @@ import { StateService } from '../../core/services/state.service.js';
             </span>
           }
         </div>
+        <div class="timeframe-select-container">
+          <span class="label">Timeframe:</span>
+          <select 
+            [value]="state.timeframe()" 
+            (change)="onTimeframeChange($any($event.target).value)"
+            class="timeframe-select"
+          >
+            <option value="1h">1h (60m)</option>
+            <option value="4h">4h (240m)</option>
+            <option value="1D">1D (Daily)</option>
+          </select>
+        </div>
         @if (state.isEvaluating()) {
           <span class="eval-spinner"></span>
         }
@@ -154,4 +166,8 @@ import { StateService } from '../../core/services/state.service.js';
 })
 export class BotDecisionComponent {
   state = inject(StateService);
+
+  onTimeframeChange(tf: string) {
+    this.state.updateTimeframe(tf);
+  }
 }

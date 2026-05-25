@@ -40,6 +40,18 @@ import { StateService } from '../../core/services/state.service.js';
             </div>
           </div>
         </div>
+        <div class="timeframe-select-container">
+          <span class="label">Timeframe:</span>
+          <select 
+            [value]="state.timeframe()" 
+            (change)="onTimeframeChange($any($event.target).value)"
+            class="timeframe-select"
+          >
+            <option value="1h">1h (60m)</option>
+            <option value="4h">4h (240m)</option>
+            <option value="1D">1D (Daily)</option>
+          </select>
+        </div>
         @if (state.selectedIndex() !== null && state.klines().length > 0) {
           <div class="selected-candle-details">
             <div class="detail-pill">
@@ -79,6 +91,10 @@ import { StateService } from '../../core/services/state.service.js';
 })
 export class HistoricalChartComponent {
   state = inject(StateService);
+
+  onTimeframeChange(tf: string) {
+    this.state.updateTimeframe(tf);
+  }
 
   @ViewChild('chartCanvas') chartCanvas!: ElementRef<HTMLCanvasElement>;
 

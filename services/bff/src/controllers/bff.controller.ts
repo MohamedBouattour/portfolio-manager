@@ -17,6 +17,16 @@ export class BffController {
     }
   }
 
+  @Post('config')
+  async updateConfig(@Body() body: any) {
+    try {
+      const res = await axios.post(`${PORTFOLIO_MANAGER_URL}/api/config`, body);
+      return res.data;
+    } catch (err: any) {
+      throw new HttpException(err.response?.data || err.message, err.response?.status || HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   @Get('stocks')
   async getStocks() {
     try {

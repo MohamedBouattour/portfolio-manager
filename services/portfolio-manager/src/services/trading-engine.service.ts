@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConnectorExchangeService } from './connector-exchange.service.js';
 import { ScouterStrategyService } from './scouter-strategy.service.js';
 import { Position, InstrumentSpec, BotConfig } from '@portfolio/contracts';
+import { getTimeframe } from '@portfolio/contracts/utils';
 import { roundQty } from '../utils/math.js';
 import { log } from '../utils/logger.js';
 
@@ -20,7 +21,7 @@ export class TradingEngineService {
 
     const config: BotConfig = {
       stockSymbols: (process.env.STOCK_SYMBOLS || 'ALL').split(',').map(s => s.trim()),
-      interval: process.env.TIME_FRAME || '240',
+      interval: getTimeframe(),
       dryRun: process.env.DRY_RUN === 'true',
       balance: parseFloat(process.env.BALANCE || '689'),
       leverage: parseInt(process.env.LEVERAGE || '3', 10),
