@@ -50,6 +50,19 @@ export class ConnectorController {
     }
   }
 
+  @Get('balance')
+  async getBalance() {
+    try {
+      const balance = await this.bybitRestService.getWalletBalance();
+      if (!balance) {
+        throw new HttpException('Failed to fetch wallet balance', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+      return balance;
+    } catch (err: any) {
+      throw new HttpException(err.message || 'Error fetching balance', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   @Get('positions')
   async getPositions() {
     try {

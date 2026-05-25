@@ -18,11 +18,60 @@ import { StateService } from '../../core/services/state.service.js';
             {{ state.manualMode() ? '🔴 MANUAL RUN GUARD ACTIVE' : '🟢 AUTO EXECUTION ACTIVE' }}
           </span>
         </div>
-        <button (click)="state.fetchOpenPositions()" class="btn btn-secondary btn-small">
+        <button (click)="state.fetchOpenPositions(); state.fetchWalletBalance()" class="btn btn-secondary btn-small">
           🔄 Refresh
         </button>
       </div>
       <div class="card-body">
+        <!-- Balance Dashboard Grid -->
+        @if (state.bybitBalance()) {
+          <div class="balance-summary-grid">
+            <div class="stat-card">
+              <span class="stat-label">Initial Balance (.env)</span>
+              <span class="stat-value">\${{ state.botBalance().toFixed(2) }}</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">New Balance (Equity)</span>
+              <span class="stat-value">\${{ state.equity().toFixed(2) }}</span>
+            </div>
+            <div class="stat-card" [class.positive-stat]="state.bybitTotalUnrealisedPnl() > 0" [class.negative-stat]="state.bybitTotalUnrealisedPnl() < 0">
+              <span class="stat-label">Total Unrealised PnL</span>
+              <span class="stat-value">
+                {{ state.bybitTotalUnrealisedPnl() >= 0 ? '+' : '' }}\${{ state.bybitTotalUnrealisedPnl().toFixed(2) }}
+              </span>
+            </div>
+            <div class="stat-card" [class.positive-stat]="state.roiFromInitial() > 0" [class.negative-stat]="state.roiFromInitial() < 0">
+              <span class="stat-label">Total ROI</span>
+              <span class="stat-value">
+                {{ state.roiFromInitial() >= 0 ? '+' : '' }}{{ state.roiFromInitial().toFixed(2) }}%
+              </span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Available USDT</span>
+              <span class="stat-value">\${{ state.availableUsdt().toFixed(2) }}</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Position Margin (Locked)</span>
+              <span class="stat-value">\${{ state.positionMargin().toFixed(2) }}</span>
+            </div>
+          </div>
+        } @else {
+          <div class="balance-loading">
+            <span>⏳ Loading wallet balance from Bybit...</span>
+          </div>
+        }
+
+        <!-- Configuration/More Info Row -->
+        <div class="config-info-bar">
+          <span class="info-tag">⏱ Timeframe: <strong>{{ state.timeframe() }}</strong></span>
+          <span class="info-tag">⚙ Leverage: <strong>{{ state.botLeverage() }}x</strong></span>
+          <span class="info-tag">📈 Max Alloc: <strong>{{ state.maxAllocPct() }}%</strong></span>
+          <span class="info-tag">🎯 Take Profit: <strong>+{{ state.profitThresholdPct() }}%</strong></span>
+          <span class="info-tag">🔄 DCA Trigger: <strong>-{{ state.rebuyThresholdPct() }}%</strong></span>
+          <span class="info-tag">📉 DCA Qty: <strong>+{{ state.rebuyQtyPct() }}%</strong></span>
+          <span class="info-tag">✂ TP Reduce: <strong>-{{ state.reducePct() }}%</strong></span>
+        </div>
+
         @if (state.openPositions().length > 0) {
           <div class="table-responsive">
             <table class="positions-table">

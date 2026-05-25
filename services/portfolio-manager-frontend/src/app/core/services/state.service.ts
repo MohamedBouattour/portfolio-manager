@@ -41,6 +41,54 @@ export class StateService {
   manualMode = signal<boolean>(false);
   orderExecuting = signal<boolean>(false);
   orderStatus = signal<string | null>(null);
+  bybitBalance = signal<any>(null);
+
+  // Bybit Wallet Balance derived states
+  usdtCoinData = computed(() => {
+    const balanceInfo = this.bybitBalance();
+    if (!balanceInfo || !balanceInfo.coin) return null;
+    return balanceInfo.coin.find((c: any) => c.coin === 'USDT') || null;
+  });
+
+  availableUsdt = computed(() => {
+    const coin = this.usdtCoinData();
+    if (!coin) return 0;
+    const walletBalance = parseFloat(coin.walletBalance || '0');
+    const totalPositionIM = parseFloat(coin.totalPositionIM || '0');
+    const totalOrderIM = parseFloat(coin.totalOrderIM || '0');
+    return walletBalance - totalPositionIM - totalOrderIM;
+  });
+
+  positionMargin = computed(() => {
+    const coin = this.usdtCoinData();
+    if (!coin) return 0;
+    return parseFloat(coin.totalPositionIM || '0');
+  });
+
+  walletBalance = computed(() => {
+    const coin = this.usdtCoinData();
+    if (!coin) return 0;
+    return parseFloat(coin.walletBalance || '0');
+  });
+
+  equity = computed(() => {
+    const coin = this.usdtCoinData();
+    if (!coin) return 0;
+    return parseFloat(coin.equity || '0');
+  });
+
+  bybitTotalUnrealisedPnl = computed(() => {
+    const coin = this.usdtCoinData();
+    if (!coin) return 0;
+    return parseFloat(coin.unrealisedPnl || '0');
+  });
+
+  roiFromInitial = computed(() => {
+    const initial = this.botBalance(); // this is BALANCE from .env
+    const currentEquity = this.equity();
+    if (initial <= 0 || currentEquity <= 0) return 0;
+    return ((currentEquity - initial) / initial) * 100;
+  });
 
   // States
   isLoading = signal<boolean>(false);
@@ -181,10 +229,12 @@ export class StateService {
     this.fetchLatestLog();
     this.fetchConfig();
     this.fetchOpenPositions();
+    this.fetchWalletBalance();
     setInterval(() => {
       this.fetchScoutingStatus();
       this.fetchLatestLog();
       this.fetchOpenPositions();
+      this.fetchWalletBalance();
     }, 30000);
   }
 
@@ -238,14 +288,18 @@ export class StateService {
   }
 
   fetchConfig() {
-    this.http.get<{ timeframe: string; manualMode?: boolean; rebuyQtyPct?: number }>(`${this.apiBase}/config`).subscribe({
+    this.http.get<any>(`${this.apiBase}/config`).subscribe({
       next: (res) => {
         const tf = res.timeframe === 'D' ? '1D' : res.timeframe === '240' ? '4h' : res.timeframe === '60' ? '1h' : res.timeframe;
         this.timeframe.set(tf);
         this.manualMode.set(!!res.manualMode);
-        if (res.rebuyQtyPct !== undefined) {
-          this.rebuyQtyPct.set(res.rebuyQtyPct);
-        }
+        if (res.rebuyQtyPct !== undefined) this.rebuyQtyPct.set(res.rebuyQtyPct);
+        if (res.balance !== undefined) this.botBalance.set(res.balance);
+        if (res.leverage !== undefined) this.botLeverage.set(res.leverage);
+        if (res.profitThresholdPct !== undefined) this.profitThresholdPct.set(res.profitThresholdPct);
+        if (res.rebuyThresholdPct !== undefined) this.rebuyThresholdPct.set(res.rebuyThresholdPct);
+        if (res.reducePct !== undefined) this.reducePct.set(res.reducePct);
+        if (res.maxAllocPct !== undefined) this.maxAllocPct.set(res.maxAllocPct);
       },
       error: (err) => {
         console.error('Failed to fetch config', err);
@@ -282,6 +336,17 @@ export class StateService {
       },
       error: (err) => {
         console.error('Failed to load open positions', err);
+      }
+    });
+  }
+
+  fetchWalletBalance() {
+    this.http.get<any>(`${this.apiBase}/balance`).subscribe({
+      next: (data) => {
+        this.bybitBalance.set(data);
+      },
+      error: (err) => {
+        console.error('Failed to load wallet balance', err);
       }
     });
   }
@@ -436,7 +501,7 @@ export class StateService {
   }
 
   getLogoUrl(symbol: string): string {
-    return `/logos/${symbol}.png`;
+    return `logos/${symbol}.png`;
   }
 
   onLogoError(symbol: string) {

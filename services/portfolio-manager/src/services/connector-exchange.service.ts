@@ -6,6 +6,11 @@ const CONNECTOR_URL = process.env.BYBIT_CONNECTOR_URL || 'http://localhost:3001'
 
 @Injectable()
 export class ConnectorExchangeService {
+  async getWalletBalance(): Promise<any> {
+    const res = await axios.get(`${CONNECTOR_URL}/api/balance`);
+    return res.data;
+  }
+
   async getOpenPositions(): Promise<Position[]> {
     const res = await axios.get(`${CONNECTOR_URL}/api/positions`);
     return res.data;

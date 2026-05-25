@@ -42,6 +42,16 @@ export class PortfolioController {
     return this.getConfig();
   }
 
+  @Get('balance')
+  async getBalance() {
+    try {
+      const balance = await this.exchange.getWalletBalance();
+      return balance;
+    } catch (err: any) {
+      throw new HttpException(err.message || 'Error fetching balance', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   @Get('positions')
   async getPositions() {
     try {

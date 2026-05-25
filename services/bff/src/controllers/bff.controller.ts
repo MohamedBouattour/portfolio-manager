@@ -64,6 +64,16 @@ export class BffController {
     }
   }
 
+  @Get('balance')
+  async getBalance() {
+    try {
+      const res = await axios.get(`${PORTFOLIO_MANAGER_URL}/api/balance`);
+      return res.data;
+    } catch (err: any) {
+      throw new HttpException(err.response?.data || err.message, err.response?.status || HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   @Get('positions')
   async getPositions() {
     try {

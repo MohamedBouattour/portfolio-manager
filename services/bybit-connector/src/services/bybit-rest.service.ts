@@ -22,6 +22,26 @@ export class BybitRestService {
     });
   }
 
+  public async getWalletBalance(): Promise<any> {
+    console.log('[BybitRestService] Fetching wallet balance...');
+    try {
+      const res = await this.client.getWalletBalance({
+        accountType: 'UNIFIED',
+        coin: 'USDT',
+      });
+
+      if (res.retCode !== 0) {
+        console.error('[BybitRestService] getWalletBalance failed:', res.retMsg);
+        return null;
+      }
+
+      return res.result?.list?.[0] ?? null;
+    } catch (err) {
+      console.error('[BybitRestService] Exception in getWalletBalance:', err);
+      return null;
+    }
+  }
+
   public async getOpenPositions(): Promise<Position[]> {
     console.log('[BybitRestService] Fetching open positions...');
     try {

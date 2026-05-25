@@ -145,7 +145,7 @@ describe('AppComponent and StateService', () => {
     });
 
     it('getLogoUrl should return path', () => {
-      expect(stateService.getLogoUrl('AAPL')).toBe('/logos/AAPL.png');
+      expect(stateService.getLogoUrl('AAPL')).toBe('logos/AAPL.png');
     });
 
     it('should have default sim values', () => {
