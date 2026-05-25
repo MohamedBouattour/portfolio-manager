@@ -1,0 +1,8 @@
+Here's the full picture — click any card to drill into that specific topic. Here's the logic behind the phasing:
+Why this order matters:
+The npm workspace error (@monorepo/backend not found) means your build scripts are partially broken right now — phase 1 unblocks everything else. Observability (phase 2) comes before new features because you can't debug a serverless bot without traces and metrics. The event bus (phase 3) is what lets portfolio-manager decouple from the scouter so it can run serverlessly — skipping this means your phase 4 work becomes tightly coupled synchronous calls instead of clean async jobs.
+The serverless portfolio-manager architecture:
+The key insight is that portfolio-manager should become a pure function wrapped in a runner, not a long-running server. BullMQ is the pragmatic choice here since you're already Node-based — it gives you cron scheduling, event-triggered jobs, and a back-office trigger via the BFF all through the same queue. If you later want multi-region or zero-infra, the same function drops into AWS Lambda with an EventBridge trigger and almost no code change.
+For the marketplace specifically:
+The IStrategy plugin interface is the core architectural decision. Every trading bot and scouter variant implements the same interface — this is what makes the catalog extensible without touching infrastructure. The leaderboard and paper trading mode both fall out naturally once that abstraction exists.
+Want me to start with any specific phase? I'd suggest phase 1 (the workspace fix + contracts hardening) followed immediately by the BullMQ serverless runner for portfolio-manager since that seems to be your most urgent goal.

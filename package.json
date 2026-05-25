@@ -3,22 +3,36 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "apps/bot",
-    "apps/backend",
-    "apps/frontend"
+    "services/bybit-connector",
+    "services/market-scouter",
+    "services/portfolio-manager",
+    "services/bff",
+    "services/portfolio-manager-frontend",
+    "packages/contracts"
   ],
   "scripts": {
-    "build:bot": "npm run build -w bybit-stock-bot",
-    "test": "npm run test -w bybit-stock-bot && npm run test -w @monorepo/backend && npm run test -w @monorepo/frontend",
-    "coverage": "npm run coverage -w bybit-stock-bot && npm run coverage -w @monorepo/backend && npm run coverage -w @monorepo/frontend",
-    "test:bot": "npm run test -w bybit-stock-bot",
-    "test:backend": "npm run test -w @monorepo/backend",
-    "test:frontend": "npm run test -w @monorepo/frontend",
-    "start:bot": "npm run start -w bybit-stock-bot",
-    "start:backend": "npm run start -w @monorepo/backend",
-    "start:frontend": "npm run start -w @monorepo/frontend"
+    "build:connector": "npm run build -w @portfolio/bybit-connector",
+    "build:scouter": "npm run build -w @portfolio/market-scouter",
+    "build:manager": "npm run build -w @portfolio/portfolio-manager",
+    "build:bff": "npm run build -w @portfolio/bff",
+    "build:frontend": "npm run build -w @monorepo/frontend",
+    "build": "npm run build -w @portfolio/contracts && npm run build -w @portfolio/bybit-connector && npm run build -w @portfolio/market-scouter && npm run build -w @portfolio/portfolio-manager && npm run build -w @portfolio/bff && npm run build -w @monorepo/frontend",
+    "dev:connector": "npm run dev -w @portfolio/bybit-connector",
+    "dev:scouter": "npm run dev -w @portfolio/market-scouter",
+    "dev:manager": "npm run dev -w @portfolio/portfolio-manager",
+    "dev:bff": "npm run dev -w @portfolio/bff",
+    "dev:frontend": "npm run start -w @monorepo/frontend",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "npm run test -w @monorepo/frontend",
+    "coverage": "npm run coverage -w @monorepo/frontend",
+    "deploy": "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.4.0",
+    "globals": "^17.6.0",
+    "typescript-eslint": "^8.59.4",
     "vitest": "^4.1.7"
   }
 }
