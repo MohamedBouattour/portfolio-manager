@@ -57,11 +57,13 @@ afterEach(() => {
 });
 
 describe('getConfig', () => {
-  it('should return config with timeframe and manualMode', () => {
+  it('should return config with timeframe, manualMode and rebuyQtyPct', () => {
     const result = controller.getConfig();
     expect(result).toHaveProperty('timeframe');
     expect(result).toHaveProperty('manualMode');
+    expect(result).toHaveProperty('rebuyQtyPct');
     expect(result.manualMode).toBe(false);
+    expect(result.rebuyQtyPct).toBe(15);
   });
 });
 
@@ -162,7 +164,7 @@ describe('evaluate', () => {
     const result = await controller.evaluate({
       closes: [100, 100, 100, 115, 115], index: 4,
       position: { side: 'Buy', size: 10, avgPrice: 100, markPrice: 115 },
-      config: { leverage: 3, balance: 1000, profitThresholdPct: 10, rebuyThresholdPct: 15, reducePct: 15, maxAllocPct: 20 },
+      config: { leverage: 3, balance: 1000, profitThresholdPct: 10, rebuyThresholdPct: 15, reducePct: 15, rebuyQtyPct: 15, maxAllocPct: 20 },
     });
     expect(result.positionDecision.action).toBe('REDUCE');
   });
@@ -171,16 +173,40 @@ describe('evaluate', () => {
     const result = await controller.evaluate({
       closes: [100, 100, 100, 85, 85], index: 4,
       position: { side: 'Buy', size: 10, avgPrice: 100, markPrice: 85 },
-      config: { leverage: 3, balance: 1000, profitThresholdPct: 15, rebuyThresholdPct: 10, reducePct: 15, maxAllocPct: 20 },
+      config: { leverage: 3, balance: 1000, profitThresholdPct: 15, rebuyThresholdPct: 10, reducePct: 15, rebuyQtyPct: 15, maxAllocPct: 20 },
     });
     expect(result.positionDecision.action).toBe('DCA_REBUY');
+    expect(result.positionDecision.qty).toBe(1.5);
+  });
+
+  it('should HOLD on DCA_REBUY with loop prevention when price not dropped enough', async () => {
+    // rebuyThresholdPct(10) / leverage(3) = 3.33% drop required
+    // requiredPrice = 90 * (1 - 3.33/100) = 87.0
+    // markPrice 88 > 87, so loop prevention triggers HOLD
+    const result = await controller.evaluate({
+      closes: [100, 100, 100, 88, 88], index: 4,
+      position: { side: 'Buy', size: 10, avgPrice: 100, markPrice: 88, lastExecutionPrice: 90, lastExecutionSide: 'Buy' },
+      config: { leverage: 3, balance: 1000, profitThresholdPct: 15, rebuyThresholdPct: 10, reducePct: 15, rebuyQtyPct: 15, maxAllocPct: 20 },
+    });
+    expect(result.positionDecision.action).toBe('HOLD');
+    expect(result.positionDecision.qty).toBe(0);
+  });
+
+  it('should DCA_REBUY even with lastExecutionPrice when price has dropped enough', async () => {
+    const result = await controller.evaluate({
+      closes: [100, 100, 100, 80, 80], index: 4,
+      position: { side: 'Buy', size: 10, avgPrice: 100, markPrice: 80, lastExecutionPrice: 90, lastExecutionSide: 'Buy' },
+      config: { leverage: 3, balance: 1000, profitThresholdPct: 15, rebuyThresholdPct: 10, reducePct: 15, rebuyQtyPct: 15, maxAllocPct: 20 },
+    });
+    expect(result.positionDecision.action).toBe('DCA_REBUY');
+    expect(result.positionDecision.qty).toBe(1.5);
   });
 
   it('should handle sell side', async () => {
     const result = await controller.evaluate({
       closes: [100, 100, 100, 85, 85], index: 4,
       position: { side: 'Sell', size: 10, avgPrice: 100, markPrice: 85 },
-      config: { leverage: 3, balance: 1000, profitThresholdPct: 10, rebuyThresholdPct: 15, reducePct: 15, maxAllocPct: 20 },
+      config: { leverage: 3, balance: 1000, profitThresholdPct: 10, rebuyThresholdPct: 15, reducePct: 15, rebuyQtyPct: 15, maxAllocPct: 20 },
     });
     expect(result.positionDecision.action).toBe('REDUCE');
   });

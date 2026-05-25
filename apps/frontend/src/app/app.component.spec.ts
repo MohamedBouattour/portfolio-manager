@@ -213,6 +213,68 @@ describe('AppComponent', () => {
   it('should have default sim values', () => {
     expect(component.botBalance()).toBe(689);
     expect(component.botLeverage()).toBe(3);
+    expect(component.rebuyQtyPct()).toBe(15);
     expect(component.maxAllocPct()).toBe(20);
+  });
+
+  describe('getPositionDecision', () => {
+    const basePos = {
+      symbol: 'AAPLUSDT', side: 'Buy' as const, size: 10,
+      avgPrice: 100, markPrice: 100, unrealisedPnl: 0,
+      positionValue: 1000, leverage: 3,
+    };
+
+    // margin = (10 * 100) / 3 = 333.33
+    // pnlPct = unrealisedPnl / 333.33 * 100
+
+    it('should return HOLD when PnL within thresholds', () => {
+      // pnlPct = 30 / 333.33 * 100 = 9% (within [+15%, -15%])
+      const pos = { ...basePos, markPrice: 103, unrealisedPnl: 30 };
+      const d = component.getPositionDecision(pos);
+      expect(d.action).toBe('HOLD');
+      expect(d.qty).toBe(0);
+    });
+
+    it('should return REDUCE when PnL >= profitThresholdPct', () => {
+      // pnlPct = 60 / 333.33 * 100 = 18% (>= 15%)
+      const pos = { ...basePos, markPrice: 106, unrealisedPnl: 60 };
+      const d = component.getPositionDecision(pos);
+      expect(d.action).toBe('REDUCE');
+      expect(d.qty).toBe(1.5);
+    });
+
+    it('should return DCA_REBUY when PnL <= -rebuyThresholdPct', () => {
+      // pnlPct = -60 / 333.33 * 100 = -18% (<= -15%)
+      const pos = { ...basePos, markPrice: 94, unrealisedPnl: -60 };
+      const d = component.getPositionDecision(pos);
+      expect(d.action).toBe('DCA_REBUY');
+      expect(d.qty).toBe(1.5);
+    });
+
+    it('should return HOLD (loop prevention) when lastExecutionPrice exists and markPrice has not dropped enough', () => {
+      // pnlPct <= -15% enters DCA_REBUY branch, then loop prevention checks:
+      // rebuyThresholdPct(15) / leverage(3) = 5% drop required
+      // requiredPrice = 95 * (1 - 5/100) = 90.25
+      // markPrice 94 > 90.25 → HOLD
+      const pos = {
+        ...basePos, markPrice: 94, unrealisedPnl: -60,
+        lastExecutionPrice: 95, lastExecutionSide: 'Buy' as const,
+      };
+      const d = component.getPositionDecision(pos);
+      expect(d.action).toBe('HOLD');
+      expect(d.qty).toBe(0);
+    });
+
+    it('should return DCA_REBUY when lastExecutionPrice exists and markPrice has dropped enough', () => {
+      // requiredPrice = 95 * (1 - 5/100) = 90.25
+      // markPrice 90 <= 90.25 → loop prevention passes → DCA_REBUY
+      const pos = {
+        ...basePos, markPrice: 90, unrealisedPnl: -100,
+        lastExecutionPrice: 95, lastExecutionSide: 'Buy' as const,
+      };
+      const d = component.getPositionDecision(pos);
+      expect(d.action).toBe('DCA_REBUY');
+      expect(d.qty).toBe(1.5);
+    });
   });
 });
