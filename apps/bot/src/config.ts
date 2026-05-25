@@ -1,7 +1,23 @@
 import dotenv from 'dotenv';
+import * as path from 'path';
+import * as fs from 'fs';
 import { BotConfig } from './types/index.js';
 
-dotenv.config();
+function loadEnv() {
+  let dir = process.cwd();
+  while (dir) {
+    const envPath = path.join(dir, '.env');
+    if (fs.existsSync(envPath)) {
+      dotenv.config({ path: envPath });
+      return;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  dotenv.config();
+}
+loadEnv();
 
 function reqEnv(key: string): string {
   const v = process.env[key];
@@ -41,4 +57,5 @@ export const CFG: BotConfig = {
 
   /** Dry run mode - defaults to true unless explicitly disabled */
   dryRun: process.env.DRY_RUN !== 'false',
+  manualMode: process.env.MANUAL_MODE?.trim().toLowerCase() === 'true',
 };

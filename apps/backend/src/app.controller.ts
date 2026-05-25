@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Query, Body, HttpException, HttpStatus } from '@nestjs/common';
-import { BybitAdapter, MACDStrategy, MIN_MACD_CANDLES } from 'bybit-stock-bot';
-import { RestClientV5 } from 'bybit-api';
+import { MACDStrategy, MIN_MACD_CANDLES } from 'bybit-stock-bot';
+import { BybitService } from './bybit.service.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -27,8 +27,6 @@ const DEFAULT_TIMEFRAME = process.env.TIME_FRAME ?? '240';
 
 @Controller('api')
 export class AppController {
-  private adapter: BybitAdapter;
-  private client: RestClientV5;
   private momentumCache: any = null;
   private lastFetchTime = 0;
   private scoutingCache: any = null;
@@ -36,21 +34,15 @@ export class AppController {
   private stocksCache: string[] | null = null;
   private lastStocksFetch = 0;
 
-  constructor() {
-    const apiKey = process.env.API_KEY || '';
-    const secretKey = process.env.SECRET_KEY || '';
-    this.adapter = new BybitAdapter(apiKey, secretKey);
-    this.client = new RestClientV5({
-      key: apiKey,
-      secret: secretKey,
-      testnet: false,
-    });
-  }
+  constructor(private readonly bybitService: BybitService) {}
 
   @Get('config')
   getConfig() {
+    const isManual = process.env.MANUAL_MODE?.trim().toLowerCase() === 'true';
+    console.log(`[Backend Config] Request received. timeframe: ${DEFAULT_TIMEFRAME}, MANUAL_MODE env: '${process.env.MANUAL_MODE}', parsed: ${isManual}`);
     return {
       timeframe: DEFAULT_TIMEFRAME,
+      manualMode: isManual,
     };
   }
 
@@ -62,7 +54,7 @@ export class AppController {
     }
     try {
       // Dynamic scanning of symbols
-      const symbols = await this.adapter.getActiveStockSymbols();
+      const symbols = await this.bybitService.getActiveStockSymbols();
       if (symbols && symbols.length > 0) {
         this.stocksCache = symbols;
         this.lastStocksFetch = now;
@@ -95,8 +87,7 @@ export class AppController {
     }
     try {
       const limit = 200;
-      const res = await this.client.getKline({
-        category: 'linear',
+      const res = await this.bybitService.getKlines({
         symbol,
         interval: interval as any,
         limit,
@@ -252,14 +243,13 @@ export class AppController {
       logWrite('ℹ', `Discovered ${symbols.length} active TradFi stock symbols.`);
       const targetSymbols = symbols;
       const strategy = new MACDStrategy(12, 26, 9);
-      const tfName = DEFAULT_TIMEFRAME === 'D' ? '1D' : DEFAULT_TIMEFRAME === '240' ? '4h' : DEFAULT_TIMEFRAME;
+      const tfName = DEFAULT_TIMEFRAME === 'D' ? '1D' : DEFAULT_TIMEFRAME === '240' ? '4h' : DEFAULT_TIMEFRAME === '60' ? '1h' : DEFAULT_TIMEFRAME;
       logWrite('ℹ', `Evaluating MACD (12, 26, 9) crossover strategy on ${tfName} interval...`);
 
       const results = await Promise.all(
         targetSymbols.map(async (symbol) => {
           try {
-            const res = await this.client.getKline({
-              category: 'linear',
+            const res = await this.bybitService.getKlines({
               symbol,
               interval: DEFAULT_TIMEFRAME as any,
               limit: 100,
@@ -375,8 +365,7 @@ export class AppController {
         targetSymbols.map(async (symbol) => {
           try {
             const limit = 7; // 7 daily klines = 7 days
-            const res = await this.client.getKline({
-              category: 'linear',
+            const res = await this.bybitService.getKlines({
               symbol,
               interval: 'D',
               limit,
@@ -415,6 +404,47 @@ export class AppController {
         { symbol: 'AMZNUSDT', price: 185.50, changePct: 3.1 },
         { symbol: 'GOOGLUSDT', price: 173.80, changePct: 2.4 },
       ];
+    }
+  }
+
+  @Get('positions')
+  async getPositions() {
+    try {
+      return await this.bybitService.getOpenPositions();
+    } catch (err: any) {
+      throw new HttpException(err.message || 'Error fetching positions', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('execute-order')
+  async executeOrder(
+    @Body()
+    body: {
+      symbol: string;
+      side: 'Buy' | 'Sell';
+      qty: number;
+      reduceOnly?: boolean;
+      leverage?: number;
+    }
+  ) {
+    const { symbol, side, qty, reduceOnly, leverage } = body;
+    if (!symbol || !side || !qty) {
+      throw new HttpException('Missing required order parameters', HttpStatus.BAD_REQUEST);
+    }
+    try {
+      const result = await this.bybitService.executeOrder({
+        symbol,
+        side,
+        qty,
+        reduceOnly,
+        leverage,
+      });
+      if (!result) {
+        throw new HttpException('Order submission failed on exchange', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+      return result;
+    } catch (err: any) {
+      throw new HttpException(err.message || 'Order execution error', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }

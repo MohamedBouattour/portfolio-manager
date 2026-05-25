@@ -12,24 +12,33 @@ export class BybitAdapter implements Exchange {
       secret: secretKey,
       testnet: false,
       recv_window: 10_000,
+      enable_time_sync: true,
     });
   }
 
   public async getOpenPositions(): Promise<Position[]> {
+    console.log('[BybitAdapter] getOpenPositions() calling getPositionInfo via Bybit REST Client...');
     try {
       const res = await this.client.getPositionInfo({
         category: 'linear',
         settleCoin: 'USDT',
       });
 
+      console.log(`[BybitAdapter] getPositionInfo returned: retCode=${res.retCode}, retMsg='${res.retMsg}'`);
       if (res.retCode !== 0) {
         log.error('getPositionInfo failed on Bybit', res.retMsg);
         return [];
       }
 
       const list = res.result?.list ?? [];
+      console.log(`[BybitAdapter] Raw positions list count returned from API: ${list.length}`);
+      
+      if (list.length > 0) {
+        const symbolsAndSizes = list.map((p: any) => `${p.symbol}: size=${p.size}`).join(', ');
+        console.log(`[BybitAdapter] Raw positions in list: ${symbolsAndSizes}`);
+      }
 
-      return list
+      const activePositions = list
         .filter((p: any) => parseFloat(p.size) > 0)
         .map((p: any) => ({
           symbol: p.symbol as string,
@@ -41,8 +50,12 @@ export class BybitAdapter implements Exchange {
           positionValue: parseFloat(p.positionValue),
           leverage: parseFloat(p.leverage),
         }));
+
+      console.log(`[BybitAdapter] Filtered active positions (size > 0): ${activePositions.length}`);
+      return activePositions;
     } catch (err) {
       log.error('Failed to get positions from Bybit', err);
+      console.error('[BybitAdapter] Exception in getOpenPositions:', err);
       return [];
     }
   }

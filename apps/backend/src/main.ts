@@ -2,10 +2,25 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as fs from 'fs';
 
-// Load environment variables from the bot directory if present
-dotenv.config({ path: path.resolve(process.cwd(), '../bot/.env') });
-dotenv.config(); // Also load from current folder
+// Traverses up from process.cwd() to find and load the root .env file
+function loadEnv() {
+  let dir = process.cwd();
+  while (dir) {
+    const envPath = path.join(dir, '.env');
+    if (fs.existsSync(envPath)) {
+      dotenv.config({ path: envPath });
+      return;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  // Try fallback in cwd
+  dotenv.config();
+}
+loadEnv();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

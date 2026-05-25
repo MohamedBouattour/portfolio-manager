@@ -362,4 +362,42 @@ describe('TradingEngine Unit Tests', () => {
       expect(submittedOrders).toHaveLength(0);
     });
   });
+
+  describe('Manual Mode Execution Guard', () => {
+    it('should skip entry order submission when manualMode is enabled', async () => {
+      vi.mocked(mockStrategy.evaluate).mockReturnValue({
+        shouldEnter: true,
+        latestValues: { macd: -0.5, signal: -0.6, histogram: 0.1 },
+      });
+      mockCloses['AAPLUSDT'] = Array(200).fill(150);
+      mockConfig.stockSymbols = ['AAPLUSDT'];
+      mockConfig.manualMode = true;
+
+      const engine = new TradingEngine(mockExchange, mockConfig, mockStrategy);
+      await engine.run();
+
+      expect(submittedOrders).toHaveLength(0);
+    });
+
+    it('should skip position management order submission (Take Profit / DCA) when manualMode is enabled', async () => {
+      mockPositions = [
+        {
+          symbol: 'AAPLUSDT',
+          side: 'Buy',
+          size: 10,
+          avgPrice: 100,
+          markPrice: 118,
+          unrealisedPnl: 180,
+          positionValue: 1000,
+          leverage: 3,
+        },
+      ];
+      mockConfig.manualMode = true;
+
+      const engine = new TradingEngine(mockExchange, mockConfig, mockStrategy);
+      await engine.run();
+
+      expect(submittedOrders).toHaveLength(0);
+    });
+  });
 });

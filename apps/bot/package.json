@@ -9,7 +9,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "bybit-api": "^3.10.8",
@@ -17,6 +18,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.12.0",
+    "@vitest/coverage-v8": "^4.1.7",
     "tsx": "^4.19.4",
     "typescript": "^5.7.3",
     "vitest": "^4.1.7"

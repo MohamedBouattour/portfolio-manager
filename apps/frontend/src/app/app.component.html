@@ -144,23 +144,33 @@
           <div class="title-area flex-align-center">
             @if (selectedAsset()) {
               <div class="header-logo-container">
-                <img 
-                  [src]="getLogoUrl(selectedAsset()!)" 
-                  (error)="onLogoError(selectedAsset()!)" 
-                  *ngIf="!logoErrors().has(selectedAsset()!); else headerFallback"
-                  class="header-company-logo"
-                  alt=""
-                />
-                <ng-template #headerFallback>
-                  <div class="header-initials-logo" [style.background-color]="getLogoColor(selectedAsset()!)">
+                @if (!logoErrors().has(selectedAsset()!)) {
+                  <img 
+                    [src]="getLogoUrl(selectedAsset()!)" 
+                    (error)="onLogoError(selectedAsset()!)" 
+                    class="header-company-logo"
+                    alt=""
+                  />
+                } @else {
+                  <div class="header-initials-logo" [style.backgroundColor]="getLogoColor(selectedAsset()!)">
                     {{ selectedAsset()!.substring(0, 2) }}
                   </div>
-                </ng-template>
+                }
               </div>
             }
             <div>
               <span class="label">Interactive Futures Chart</span>
-              <h2 class="asset-title">{{ selectedAsset() || 'No Asset Selected' }}</h2>
+              <div class="flex-row align-center gap-10">
+                <h2 class="asset-title">{{ selectedAsset() || 'No Asset Selected' }}</h2>
+                @if (selectedAsset()) {
+                  <button 
+                    (click)="openOrderModal(selectedAsset()!, 'Buy', 1, false, 'Manual Override', botLeverage())" 
+                    class="btn btn-primary btn-small btn-manual-trade"
+                  >
+                    ⚡ Manual Trade
+                  </button>
+                }
+              </div>
             </div>
           </div>
           @if (selectedIndex() !== null && klines().length > 0) {
@@ -243,6 +253,103 @@
             <div class="no-signals-state">
               <span class="no-signals-icon">💤</span>
               <p>No active bullish MACD entry signals scouted at this moment. The market is consolidating or in a downtrend.</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Active Bybit Portfolio Positions -->
+      <div class="card positions-card">
+        <div class="card-header">
+          <div class="flex-row align-center gap-10">
+            <h3>💼 Live Bybit Positions</h3>
+            <span class="mode-badge" [class.manual-mode]="manualMode()" [class.auto-mode]="!manualMode()">
+              {{ manualMode() ? '🔴 MANUAL RUN GUARD ACTIVE' : '🟢 AUTO EXECUTION ACTIVE' }}
+            </span>
+          </div>
+          <button (click)="fetchOpenPositions()" class="btn btn-secondary btn-small">
+            🔄 Refresh
+          </button>
+        </div>
+        <div class="card-body">
+          @if (openPositions().length > 0) {
+            <div class="table-responsive">
+              <table class="positions-table">
+                <thead>
+                  <tr>
+                    <th>Symbol</th>
+                    <th>Side</th>
+                    <th>Size</th>
+                    <th>Entry Price</th>
+                    <th>Mark Price</th>
+                    <th>PnL (Ratio)</th>
+                    <th>Value</th>
+                    <th>Leverage</th>
+                    <th>Bot Decision</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (pos of openPositions(); track pos.symbol) {
+                    <tr [class.long-row]="pos.side === 'Buy'" [class.short-row]="pos.side === 'Sell'" (click)="selectAsset(pos.symbol)">
+                      <td class="bold">{{ pos.symbol }}</td>
+                      <td>
+                        <span class="side-badge" [class.buy]="pos.side === 'Buy'" [class.sell]="pos.side === 'Sell'">
+                          {{ pos.side === 'Buy' ? 'LONG' : 'SHORT' }}
+                        </span>
+                      </td>
+                      <td>{{ pos.size }}</td>
+                      <td>${{ pos.avgPrice.toFixed(2) }}</td>
+                      <td>${{ pos.markPrice.toFixed(2) }}</td>
+                      <td [class.green]="pos.unrealisedPnl > 0" [class.red]="pos.unrealisedPnl < 0" class="bold">
+                        {{ pos.unrealisedPnl >= 0 ? '+' : '' }}${{ pos.unrealisedPnl.toFixed(2) }}
+                        ({{ pos.unrealisedPnl >= 0 ? '+' : '' }}{{ getPnlPercent(pos).toFixed(2) }}%)
+                      </td>
+                      <td>${{ pos.positionValue.toFixed(2) }}</td>
+                      <td>{{ pos.leverage }}x</td>
+                      <td>
+                        @if (getPositionDecision(pos).action === 'REDUCE') {
+                          <span class="badge badge-reduce" [title]="getPositionDecision(pos).reason">🟢 REDUCE</span>
+                        } @else if (getPositionDecision(pos).action === 'DCA_REBUY') {
+                          <span class="badge badge-rebuy" [title]="getPositionDecision(pos).reason">🔵 DCA REBUY</span>
+                        } @else {
+                          <span class="badge badge-hold" [title]="getPositionDecision(pos).reason">🟡 HOLD</span>
+                        }
+                      </td>
+                      <td>
+                        <div class="flex-row gap-5">
+                          @if (getPositionDecision(pos).action === 'REDUCE') {
+                            <button 
+                              (click)="$event.stopPropagation(); openOrderModal(pos.symbol, pos.side === 'Buy' ? 'Sell' : 'Buy', getPositionDecision(pos).qty, true, getPositionDecision(pos).reason, pos.leverage)" 
+                              class="btn btn-small btn-tp-action"
+                            >
+                              ⚡ Execute TP
+                            </button>
+                          } @else if (getPositionDecision(pos).action === 'DCA_REBUY') {
+                            <button 
+                              (click)="$event.stopPropagation(); openOrderModal(pos.symbol, pos.side, getPositionDecision(pos).qty, false, getPositionDecision(pos).reason, pos.leverage)" 
+                              class="btn btn-small btn-dca-action"
+                            >
+                              ⚡ Execute DCA
+                            </button>
+                          }
+                          <button 
+                            (click)="$event.stopPropagation(); openOrderModal(pos.symbol, pos.side === 'Buy' ? 'Sell' : 'Buy', pos.size, true, 'Manual Position Close', pos.leverage)" 
+                            class="btn btn-close-position"
+                          >
+                            ✖ Close
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="no-positions-state">
+              <span class="positions-icon">💼</span>
+              <p>No open positions on Bybit at the moment.</p>
             </div>
           }
         </div>
@@ -444,6 +551,50 @@
                   <p class="log-text">{{ evaluationResult()!.positionDecision.reason }}</p>
                 </div>
               </div>
+
+              <!-- Manual Order Confirmation Button -->
+              @if (getSuggestedOrder(); as order) {
+                <div class="manual-order-confirmation border-top">
+                  <h4 class="block-title font-gold">⚡ Manual Order Execution</h4>
+                  <div class="order-details-box">
+                    <div class="detail-row">
+                      <span>Symbol:</span>
+                      <strong class="highlight-val">{{ order.symbol }}</strong>
+                    </div>
+                    <div class="detail-row">
+                      <span>Action:</span>
+                      <strong [class.buy-text]="order.side === 'Buy'" [class.sell-text]="order.side === 'Sell'">
+                        {{ order.side === 'Buy' ? 'BUY (Entry / DCA)' : 'SELL (Take Profit / Reduce)' }}
+                      </strong>
+                    </div>
+                    <div class="detail-row">
+                      <span>Size:</span>
+                      <strong class="highlight-val">{{ order.qty }} units</strong>
+                    </div>
+                    <div class="detail-row">
+                      <span>Est. Value:</span>
+                      <strong>${{ order.notional }}</strong>
+                    </div>
+                    <div class="detail-row">
+                      <span>Est. Margin:</span>
+                      <strong>${{ order.margin }} ({{ botLeverage() }}x)</strong>
+                    </div>
+                    <div class="detail-row">
+                      <span>Reason:</span>
+                      <span class="reason-note">{{ order.reason }}</span>
+                    </div>
+                  </div>
+
+                  <div class="confirm-action-row">
+                    <button 
+                      (click)="openOrderModal(order.symbol, order.side, order.qty, order.reduceOnly, order.reason, botLeverage())" 
+                      class="btn btn-primary btn-confirm-order"
+                    >
+                      🚀 Validate Bot Decision
+                    </button>
+                  </div>
+                </div>
+              }
             } @else {
               <div class="decision-placeholder">
                 <span class="placeholder-icon">📊</span>
@@ -478,4 +629,106 @@
 
     </section>
   </main>
+
+  <!-- Manual Order Confirmation / Manual Operation Modal -->
+  @if (showOrderModal()) {
+    <div class="modal-backdrop" (click)="closeOrderModal()">
+      <div class="modal-container" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>⚡ Manual Order Execution</h3>
+          <button class="modal-close-btn" (click)="closeOrderModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Symbol</label>
+            <input type="text" [value]="modalSymbol()" disabled class="form-input disabled-input" />
+          </div>
+          <div class="form-row flex-row gap-15">
+            <div class="form-group flex-1">
+              <label>Side (Action)</label>
+              <select [ngModel]="modalSide()" (ngModelChange)="modalSide.set($event)" class="form-input">
+                <option value="Buy">BUY (Long)</option>
+                <option value="Sell">SELL (Short)</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label>Leverage</label>
+              <input 
+                type="number" 
+                [ngModel]="modalLeverage()" 
+                (ngModelChange)="modalLeverage.set(+$event)" 
+                class="form-input" 
+                min="1" 
+                max="100"
+              />
+            </div>
+          </div>
+          <div class="form-row flex-row gap-15">
+            <div class="form-group flex-1">
+              <label>Quantity (Size in Units)</label>
+              <input 
+                type="number" 
+                [ngModel]="modalQty()" 
+                (ngModelChange)="modalQty.set(+$event)" 
+                class="form-input" 
+                min="0.001" 
+                step="0.01"
+              />
+            </div>
+            <div class="form-group flex-1 flex-align-end pd-bottom-10">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  [ngModel]="modalReduceOnly()" 
+                  (ngModelChange)="modalReduceOnly.set($event)" 
+                  class="checkbox-input"
+                />
+                Reduce Only
+              </label>
+            </div>
+          </div>
+          <div class="order-summary-box">
+            <div class="summary-title">Order Cost Summary</div>
+            <div class="summary-grid">
+              <div class="summary-item">
+                <span class="lbl">Current Price</span>
+                <span class="val">${{ modalAssetPrice().toFixed(2) }}</span>
+              </div>
+              <div class="summary-item">
+                <span class="lbl">Est. Order Value</span>
+                <span class="val">${{ modalNotional().toFixed(2) }}</span>
+              </div>
+              <div class="summary-item">
+                <span class="lbl">Est. Margin Needed</span>
+                <span class="val highlight">${{ modalMargin().toFixed(2) }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group pt-10">
+            <label>Reason / Note</label>
+            <input type="text" [ngModel]="modalReason()" (ngModelChange)="modalReason.set($event)" class="form-input" placeholder="e.g. Manual Override" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button (click)="closeOrderModal()" class="btn btn-secondary">Cancel</button>
+          <button 
+            (click)="executeModalOrder()" 
+            [disabled]="orderExecuting() || modalQty() <= 0" 
+            class="btn btn-primary btn-modal-confirm"
+          >
+            @if (orderExecuting()) {
+              <span class="spinner inline-spinner"></span> Executing...
+            } @else {
+              🚀 Confirm & Execute Market Order
+            }
+          </button>
+        </div>
+        @if (orderStatus()) {
+          <div class="modal-status-alert" [class.success]="orderStatus() === 'success'" [class.error]="orderStatus()?.startsWith('error')">
+            {{ orderStatus() === 'success' ? 'Order executed successfully!' : orderStatus() }}
+          </div>
+        }
+      </div>
+    </div>
+  }
 </div>

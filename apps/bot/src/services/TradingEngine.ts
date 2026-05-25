@@ -168,6 +168,10 @@ export class TradingEngine {
    * Helper to execute a take-profit/reduction order.
    */
   private async handleTakeProfit(pos: Position, spec: InstrumentSpec, currentPnL: number): Promise<void> {
+    if (this.config.manualMode) {
+      log.info(`[Manual Mode] Take Profit trigger met for ${pos.symbol} (PnL: ${currentPnL.toFixed(2)}%). Skipping automatic order execution.`);
+      return;
+    }
     const rawReduceQty = pos.size * (this.config.reducePct / 100);
     const qty = roundQty(rawReduceQty, spec);
 
@@ -195,6 +199,10 @@ export class TradingEngine {
    * Helper to execute a DCA/rebuy order.
    */
   private async handleRebuy(pos: Position, spec: InstrumentSpec, currentPnL: number): Promise<void> {
+    if (this.config.manualMode) {
+      log.info(`[Manual Mode] DCA Rebuy trigger met for ${pos.symbol} (PnL: ${currentPnL.toFixed(2)}%). Skipping automatic order execution.`);
+      return;
+    }
     const targetNotional = this.config.balance * (this.config.maxAllocPct / 100);
     const rawRebuyQty = targetNotional / pos.markPrice;
     const qty = roundQty(rawRebuyQty, spec);
@@ -228,6 +236,10 @@ export class TradingEngine {
    * Helper to execute a new long order when strategy triggers.
    */
   private async executeNewEntry(symbol: string, lastPrice: number, spec: InstrumentSpec): Promise<boolean> {
+    if (this.config.manualMode) {
+      log.info(`[Manual Mode] Entry signal triggered for ${symbol}. Skipping automatic order execution.`);
+      return false;
+    }
     const targetNotional = this.config.balance * (this.config.maxAllocPct / 100) * this.config.leverage;
     const rawQty = targetNotional / lastPrice;
     const qty = roundQty(rawQty, spec);

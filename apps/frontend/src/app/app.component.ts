@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, effect, inject, ElementRef, ViewChild, ChangeDetectionStrategy, HostListener } from '@angular/core';
+import { Component, OnInit, signal, computed, effect, inject, ElementRef, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -37,12 +37,26 @@ interface EvaluationResult {
   positionDecision: PositionDecision;
 }
 
+interface Position {
+  symbol: string;
+  side: 'Buy' | 'Sell';
+  size: number;
+  avgPrice: number;
+  markPrice: number;
+  unrealisedPnl: number;
+  positionValue: number;
+  leverage: number;
+}
+
 @Component({
   selector: 'app-root',
   imports: [CommonModule, FormsModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(window:keydown)': 'handleKeyDown($event)'
+  }
 })
 export class AppComponent implements OnInit {
   private http = inject(HttpClient);
@@ -69,11 +83,147 @@ export class AppComponent implements OnInit {
   scoutingResults = signal<any[]>([]);
   latestLog = signal<string>('Loading logs...');
   latestLogTimestamp = signal<number>(0);
-  timeframe = signal<string>('1D');
+  timeframe = signal<string>('1h');
   selectedAssetScouting = computed(() => {
     const asset = this.selectedAsset();
     if (!asset) return null;
     return this.scoutingResults().find(r => r.symbol === asset) || null;
+  });
+
+  // Open Positions & Manual Mode states
+  openPositions = signal<Position[]>([]);
+  manualMode = signal<boolean>(false);
+  orderExecuting = signal<boolean>(false);
+  orderStatus = signal<string | null>(null);
+
+  // Manual Order Overlay Modal states
+  showOrderModal = signal<boolean>(false);
+  modalSymbol = signal<string>('');
+  modalSide = signal<'Buy' | 'Sell'>('Buy');
+  modalQty = signal<number>(1);
+  modalLeverage = signal<number>(3);
+  modalReduceOnly = signal<boolean>(false);
+  modalReason = signal<string>('');
+
+  getPnlPercent(pos: Position): number {
+    const margin = (pos.size * pos.avgPrice) / pos.leverage;
+    if (margin === 0) return 0;
+    return (pos.unrealisedPnl / margin) * 100;
+  }
+
+  getPositionDecision(pos: Position): { action: 'HOLD' | 'REDUCE' | 'DCA_REBUY'; qty: number; reason: string } {
+    const pnlPct = this.getPnlPercent(pos);
+    const profitThreshold = this.profitThresholdPct();
+    const rebuyThreshold = this.rebuyThresholdPct();
+    const reduce = this.reducePct();
+    const balance = this.botBalance();
+    const maxAlloc = this.maxAllocPct();
+
+    if (pnlPct >= profitThreshold) {
+      const qtyToReduce = pos.size * (reduce / 100);
+      return {
+        action: 'REDUCE',
+        qty: parseFloat(qtyToReduce.toFixed(4)),
+        reason: `Take Profit triggered. PnL is +${pnlPct.toFixed(2)}% >= +${profitThreshold}%. Reducing position size by ${reduce}%.`
+      };
+    } else if (pnlPct <= -rebuyThreshold) {
+      const targetNotional = balance * (maxAlloc / 100);
+      const rawRebuyQty = targetNotional / pos.markPrice;
+      return {
+        action: 'DCA_REBUY',
+        qty: parseFloat(rawRebuyQty.toFixed(4)),
+        reason: `DCA Rebuy triggered. PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThreshold}%. Adding position size.`
+      };
+    } else {
+      return {
+        action: 'HOLD',
+        qty: 0,
+        reason: `PnL is ${pnlPct.toFixed(2)}% (within [-${rebuyThreshold}%, +${profitThreshold}%]). Holding position.`
+      };
+    }
+  }
+
+  modalAssetPrice = computed(() => {
+    const symbol = this.modalSymbol();
+    if (symbol === this.selectedAsset()) {
+      const idx = this.selectedIndex();
+      const klinesData = this.klines();
+      if (idx !== null && klinesData[idx]) {
+        return klinesData[idx].close;
+      }
+    }
+    const scout = this.scoutingResults().find(r => r.symbol === symbol);
+    if (scout) return scout.price;
+    const mom = this.momentumStocks().find(m => m.symbol === symbol);
+    if (mom) return mom.price;
+    return 0;
+  });
+
+  modalNotional = computed(() => {
+    const qty = this.modalQty();
+    const price = this.modalAssetPrice();
+    return parseFloat((qty * price).toFixed(2));
+  });
+
+  modalMargin = computed(() => {
+    const notional = this.modalNotional();
+    const lev = this.modalLeverage();
+    if (lev <= 0) return 0;
+    return parseFloat((notional / lev).toFixed(2));
+  });
+
+  // Computes suggested manual order if there's an active bot entry or position management action
+  getSuggestedOrder = computed(() => {
+    const evalResult = this.evaluationResult();
+    const asset = this.selectedAsset();
+    const data = this.klines();
+    if (!evalResult || !asset || data.length === 0) return null;
+
+    const lastPrice = evalResult.evalPrice;
+
+    // Check entry signal
+    if (evalResult.strategySignal.shouldEnter) {
+      const targetNotional = this.botBalance() * (this.maxAllocPct() / 100) * this.botLeverage();
+      const rawQty = targetNotional / lastPrice;
+      const qty = parseFloat(rawQty.toFixed(4));
+      return {
+        symbol: asset,
+        side: 'Buy' as const,
+        qty,
+        notional: parseFloat((qty * lastPrice).toFixed(2)),
+        margin: parseFloat(((qty * lastPrice) / this.botLeverage()).toFixed(2)),
+        reduceOnly: false,
+        reason: 'MACD Crossover Entry Signal detected'
+      };
+    }
+
+    // Check position management action
+    const decision = evalResult.positionDecision;
+    if (decision && decision.action !== 'HOLD') {
+      if (decision.action === 'REDUCE') {
+        return {
+          symbol: asset,
+          side: 'Sell' as const,
+          qty: decision.qty,
+          notional: parseFloat((decision.qty * lastPrice).toFixed(2)),
+          margin: parseFloat(((decision.qty * lastPrice) / this.botLeverage()).toFixed(2)),
+          reduceOnly: true,
+          reason: decision.reason
+        };
+      } else if (decision.action === 'DCA_REBUY') {
+        return {
+          symbol: asset,
+          side: 'Buy' as const,
+          qty: decision.qty,
+          notional: parseFloat((decision.qty * lastPrice).toFixed(2)),
+          margin: parseFloat(((decision.qty * lastPrice) / this.botLeverage()).toFixed(2)),
+          reduceOnly: false,
+          reason: decision.reason
+        };
+      }
+    }
+
+    return null;
   });
 
   // States
@@ -130,20 +280,107 @@ export class AppComponent implements OnInit {
     this.fetchScoutingStatus();
     this.fetchLatestLog();
     this.fetchConfig();
+    this.fetchOpenPositions();
     setInterval(() => {
       this.fetchScoutingStatus();
       this.fetchLatestLog();
+      this.fetchOpenPositions();
     }, 30000);
   }
 
   fetchConfig() {
-    this.http.get<{ timeframe: string }>(`${this.apiBase}/config`).subscribe({
+    this.http.get<{ timeframe: string; manualMode?: boolean }>(`${this.apiBase}/config`).subscribe({
       next: (res) => {
-        const tf = res.timeframe === 'D' ? '1D' : res.timeframe === '240' ? '4h' : res.timeframe;
+        const tf = res.timeframe === 'D' ? '1D' : res.timeframe === '240' ? '4h' : res.timeframe === '60' ? '1h' : res.timeframe;
         this.timeframe.set(tf);
+        this.manualMode.set(!!res.manualMode);
       },
       error: (err) => {
         console.error('Failed to fetch config', err);
+      }
+    });
+  }
+
+  fetchOpenPositions() {
+    this.http.get<Position[]>(`${this.apiBase}/positions`).subscribe({
+      next: (data) => {
+        this.openPositions.set(data);
+      },
+      error: (err) => {
+        console.error('Failed to load open positions', err);
+      }
+    });
+  }
+
+  confirmOrder(symbol: string, side: 'Buy' | 'Sell', qty: number, reduceOnly: boolean, leverage?: number) {
+    if (this.orderExecuting()) return;
+    this.orderExecuting.set(true);
+    this.orderStatus.set('submitting');
+
+    const body = { symbol, side, qty, reduceOnly, leverage };
+    this.http.post<any>(`${this.apiBase}/execute-order`, body).subscribe({
+      next: (res) => {
+        this.orderExecuting.set(false);
+        this.orderStatus.set('success');
+        this.fetchOpenPositions();
+        setTimeout(() => this.orderStatus.set(null), 5000);
+      },
+      error: (err) => {
+        console.error('Failed to execute order', err);
+        this.orderExecuting.set(false);
+        this.orderStatus.set(`error: ${err.error?.message || err.message}`);
+        setTimeout(() => this.orderStatus.set(null), 7000);
+      }
+    });
+  }
+
+  openOrderModal(
+    symbol: string,
+    side: 'Buy' | 'Sell',
+    qty: number,
+    reduceOnly: boolean,
+    reason: string = 'Manual Override',
+    leverage?: number
+  ) {
+    this.modalSymbol.set(symbol);
+    this.modalSide.set(side);
+    this.modalQty.set(qty);
+    this.modalReduceOnly.set(reduceOnly);
+    this.modalReason.set(reason);
+    this.modalLeverage.set(leverage || this.botLeverage());
+    this.showOrderModal.set(true);
+  }
+
+  closeOrderModal() {
+    this.showOrderModal.set(false);
+  }
+
+  executeModalOrder() {
+    if (this.orderExecuting()) return;
+    this.orderExecuting.set(true);
+    this.orderStatus.set('submitting');
+
+    const body = {
+      symbol: this.modalSymbol(),
+      side: this.modalSide(),
+      qty: this.modalQty(),
+      reduceOnly: this.modalReduceOnly(),
+      leverage: this.modalLeverage()
+    };
+
+    this.http.post<any>(`${this.apiBase}/execute-order`, body).subscribe({
+      next: (res) => {
+        this.orderExecuting.set(false);
+        this.orderStatus.set('success');
+        this.fetchOpenPositions();
+        this.closeOrderModal();
+        setTimeout(() => this.orderStatus.set(null), 5000);
+      },
+      error: (err) => {
+        console.error('Failed to execute modal order', err);
+        this.orderExecuting.set(false);
+        this.orderStatus.set(`error: ${err.error?.message || err.message}`);
+        setTimeout(() => this.orderStatus.set(null), 7000);
       }
     });
   }
@@ -182,7 +419,6 @@ export class AppComponent implements OnInit {
     });
   }
 
-  @HostListener('window:keydown', ['$event'])
   handleKeyDown(event: KeyboardEvent) {
     const activeEl = document.activeElement;
     if (activeEl) {
@@ -444,12 +680,14 @@ export class AppComponent implements OnInit {
       ctx.lineTo(x, macdTop + macdHeight + 10);
       ctx.stroke();
 
-      // Format Date (e.g. "2026-05-23")
+      // Format Date (e.g. "2026-05-23" or "05-23 14:00")
       const date = new Date(data[i].time * 1000);
       const yyyy = date.getFullYear();
       const m = (date.getMonth() + 1).toString().padStart(2, '0');
       const d = date.getDate().toString().padStart(2, '0');
-      const timeStr = `${yyyy}-${m}-${d}`;
+      const hh = date.getHours().toString().padStart(2, '0');
+      const min = date.getMinutes().toString().padStart(2, '0');
+      const timeStr = this.timeframe().includes('D') ? `${yyyy}-${m}-${d}` : `${m}-${d} ${hh}:${min}`;
 
       // Label below main price chart (in the middle gap)
       ctx.fillText(timeStr, x, paddingTop + mainChartHeight + 18);

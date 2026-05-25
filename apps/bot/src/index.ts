@@ -11,7 +11,8 @@ async function main(): Promise<void> {
 
   log.sep();
   log.info('🚀 Scalable Stock-Token Trading Bot Starting...');
-  log.info(`Target interval: ${CFG.interval} (Minutes/Resolution)`);
+  const friendlyInterval = CFG.interval === 'D' ? '1D' : CFG.interval === '240' ? '4h' : CFG.interval === '60' ? '1h' : CFG.interval;
+  log.info(`Target interval: ${friendlyInterval} (${CFG.interval} Minutes/Resolution)`);
 
   // 1. Instantiate Adapter (can easily swap to other adapters in the future)
   const exchangeAdapter = new BybitAdapter(CFG.apiKey, CFG.secretKey);

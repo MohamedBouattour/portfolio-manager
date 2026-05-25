@@ -9,9 +9,16 @@
   ],
   "scripts": {
     "build:bot": "npm run build -w bybit-stock-bot",
+    "test": "npm run test -w bybit-stock-bot && npm run test -w @monorepo/backend && npm run test -w @monorepo/frontend",
+    "coverage": "npm run coverage -w bybit-stock-bot && npm run coverage -w @monorepo/backend && npm run coverage -w @monorepo/frontend",
     "test:bot": "npm run test -w bybit-stock-bot",
+    "test:backend": "npm run test -w @monorepo/backend",
+    "test:frontend": "npm run test -w @monorepo/frontend",
     "start:bot": "npm run start -w bybit-stock-bot",
     "start:backend": "npm run start -w @monorepo/backend",
     "start:frontend": "npm run start -w @monorepo/frontend"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.7"
   }
 }
