@@ -30,10 +30,25 @@ export class StateService {
   latestLog = signal<string>('Loading logs...');
   latestLogTimestamp = signal<number>(0);
   timeframe = signal<string>('1h');
+  scoutingSortField = signal<string>('confidence');
+  scoutingSortDir = signal<'asc' | 'desc'>('desc');
   selectedAssetScouting = computed(() => {
     const asset = this.selectedAsset();
     if (!asset) return null;
     return this.scoutingResults().find(r => r.symbol === asset) || null;
+  });
+
+  /** All scouting results, sorted by the current sort field */
+  sortedScoutingResults = computed(() => {
+    const results = [...this.scoutingResults()];
+    const field = this.scoutingSortField();
+    const dir = this.scoutingSortDir();
+    results.sort((a, b) => {
+      const aVal = a[field] ?? 0;
+      const bVal = b[field] ?? 0;
+      return dir === 'desc' ? bVal - aVal : aVal - bVal;
+    });
+    return results;
   });
 
   // Open Positions & Manual Mode states
@@ -498,6 +513,27 @@ export class StateService {
 
   getUptrendAssets(): any[] {
     return this.scoutingResults().filter(r => r.shouldEnter);
+  }
+
+  getNearSignalAssets(): any[] {
+    return this.scoutingResults().filter(r => !r.shouldEnter && (r.confidence ?? 0) >= 40);
+  }
+
+  getScoutingSummary(): { entry: number; nearSignal: number; noSignal: number } {
+    const all = this.scoutingResults();
+    const entry = all.filter(r => r.shouldEnter).length;
+    const nearSignal = all.filter(r => !r.shouldEnter && (r.confidence ?? 0) >= 40).length;
+    const noSignal = all.length - entry - nearSignal;
+    return { entry, nearSignal, noSignal };
+  }
+
+  toggleScoutingSort(field: string) {
+    if (this.scoutingSortField() === field) {
+      this.scoutingSortDir.set(this.scoutingSortDir() === 'desc' ? 'asc' : 'desc');
+    } else {
+      this.scoutingSortField.set(field);
+      this.scoutingSortDir.set('desc');
+    }
   }
 
   getLogoUrl(symbol: string): string {

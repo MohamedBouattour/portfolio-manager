@@ -27,7 +27,13 @@ export class StrategyEvaluatorService {
     }
   ) {
     const historySlice = closes.slice(0, index + 1);
-    const { shouldEnter, latestValues } = this.strategy.evaluate(historySlice);
+    const result = this.strategy.evaluate(historySlice);
+    const shouldEnter = result.shouldEnter;
+    const latestValues = result.details.macd !== undefined ? {
+      macd: result.details.macd,
+      signal: result.details.signal,
+      histogram: result.details.histogram,
+    } : undefined;
 
     let positionDecision: {
       action: 'HOLD' | 'REDUCE' | 'DCA_REBUY';

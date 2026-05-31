@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { DEFAULT_STOCK_SYMBOLS } from '../strategies/constants.js';
 import axios from 'axios';
 
 const CONNECTOR_URL = process.env.BYBIT_CONNECTOR_URL || 'http://localhost:3001';
@@ -20,13 +21,9 @@ export class MomentumService {
         const symRes = await axios.get(`${CONNECTOR_URL}/api/symbols?type=stock`);
         symbols = symRes.data;
       } catch (_err: any) {
-        symbols = [
-          'AAPLUSDT', 'TSLAUSDT', 'NVDAUSDT', 'AMZNUSDT', 'GOOGLUSDT',
-          'MSFTUSDT', 'METAUSDT', 'COINUSDT', 'MSTRUSDT', 'AMDUSDT',
-          'INTCUSDT', 'PLTRUSDT', 'QQQUSDT', 'SPYUSDT', 'TSMUSDT',
-        ];
+        symbols = [...DEFAULT_STOCK_SYMBOLS];
       }
-      const targetSymbols = symbols.slice(0, 15);
+      const targetSymbols = symbols;
 
       const results = await Promise.all(
         targetSymbols.map(async (symbol) => {
@@ -41,8 +38,9 @@ export class MomentumService {
 
             const klines = res.data;
             if (Array.isArray(klines) && klines.length > 1) {
-              const latestClose = klines[0].close;
-              const oldestClose = klines[klines.length - 1].close;
+              // Klines are sorted oldest-first, so last element is most recent
+              const latestClose = klines[klines.length - 1].close;
+              const oldestClose = klines[0].close;
               const changePct = ((latestClose - oldestClose) / oldestClose) * 100;
               return {
                 symbol,

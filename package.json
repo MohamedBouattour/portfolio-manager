@@ -27,7 +27,8 @@
     "lint:fix": "eslint . --fix",
     "test": "npm run test -w @monorepo/frontend",
     "coverage": "npm run coverage -w @monorepo/frontend",
-    "deploy": "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1"
+    "deploy": "sh scripts/deploy.sh",
+    "deploy:win": "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
