@@ -67,7 +67,7 @@
 }
 
 .status-text {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #34d399;
 }
@@ -108,7 +108,7 @@
 .badge {
   background: rgba(59, 130, 246, 0.15);
   color: #60a5fa;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 9999px;
@@ -219,7 +219,7 @@
   justify-content: center;
   padding: 40px 20px;
   text-align: center;
-  color: #64748b;
+  color: #94a3b8;
   font-size: 13px;
   gap: 12px;
 }
@@ -261,10 +261,10 @@
 }
 
 .label {
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #64748b;
+  color: #94a3b8;
   font-weight: 700;
 }
 
@@ -291,7 +291,7 @@
 }
 
 .pill-label {
-  color: #64748b;
+  color: #94a3b8;
   font-weight: 600;
 }
 
@@ -323,8 +323,8 @@ canvas {
   width: 100%;
   text-align: center;
   padding: 12px 0;
-  color: #64748b;
-  font-size: 11px;
+  color: #94a3b8;
+  font-size: 12px;
   font-weight: 500;
   border-top: 1px solid rgba(51, 65, 85, 0.3);
   margin-top: 10px;
@@ -351,7 +351,7 @@ canvas {
 }
 
 .form-section-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   color: #60a5fa;
@@ -387,7 +387,7 @@ canvas {
 }
 
 .form-group label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #94a3b8;
 }
@@ -436,7 +436,7 @@ canvas {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  color: #64748b;
+  color: #94a3b8;
   gap: 12px;
   padding: 40px 20px;
 }
@@ -516,9 +516,9 @@ canvas {
 }
 
 .ind-name {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .ind-val {
@@ -536,8 +536,8 @@ canvas {
 }
 
 .explanation {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 12px;
+  color: #94a3b8;
   line-height: 1.5;
   margin: 0;
 }
@@ -580,10 +580,10 @@ canvas {
 }
 
 .log-label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
-  color: #64748b;
+  color: #94a3b8;
   display: block;
   margin-bottom: 4px;
 }
@@ -631,7 +631,7 @@ canvas {
 }
 
 .ticker-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.5px;
   color: #ffffff;
@@ -701,7 +701,7 @@ canvas {
   height: 22px;
   border-radius: 50%;
   color: #ffffff;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -716,13 +716,13 @@ canvas {
 }
 
 .ticker-price {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: #94a3b8;
 }
 
 .ticker-pct {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #10b981; /* Up-going green */
 }
@@ -764,7 +764,7 @@ canvas {
   height: 24px;
   border-radius: 50%;
   color: #ffffff;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -813,7 +813,7 @@ canvas {
 }
 
 .scout-badge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   background: rgba(59, 130, 246, 0.1);
   color: #60a5fa;
@@ -898,9 +898,9 @@ canvas {
 
 .scouter-table th {
   padding: 12px 14px;
-  color: #64748b;
+  color: #94a3b8;
   font-weight: 600;
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-bottom: 1px solid rgba(51, 65, 85, 0.5);
@@ -919,9 +919,9 @@ canvas {
 }
 
 .sort-icon {
-  font-size: 10px;
+  font-size: 12px;
   margin-left: 4px;
-  opacity: 0.6;
+  opacity: 0.75;
 }
 
 .th-sortable:hover .sort-icon {
@@ -992,7 +992,7 @@ canvas {
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  font-size: 10px;
+  font-size: 12px;
   color: #fff;
 }
 
@@ -1009,7 +1009,7 @@ canvas {
 }
 
 .entry-signal-indicator {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: #10b981;
   letter-spacing: 0.3px;
@@ -1077,7 +1077,7 @@ canvas {
 }
 
 .strategy-pill {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 4px;
@@ -1105,7 +1105,7 @@ canvas {
 
 .pill-none {
   background: transparent;
-  color: #475569;
+  color: #94a3b8;
   border: none;
   font-size: 12px;
 }
@@ -1143,7 +1143,7 @@ canvas {
   color: #60a5fa;
   padding: 5px 10px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1165,7 +1165,7 @@ canvas {
   justify-content: center;
   padding: 40px 20px;
   text-align: center;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .no-signals-icon {
@@ -1222,7 +1222,7 @@ canvas {
 .terminal-dots .dot.green { background: #34d399; }
 
 .log-timestamp-badge {
-  font-size: 11px;
+  font-size: 12px;
   font-family: monospace;
   background: rgba(255, 255, 255, 0.06);
   padding: 3px 8px;
@@ -1267,7 +1267,7 @@ canvas {
 
 /* Temporal Badge */
 .temporal-badge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   padding: 4px 10px;
@@ -1314,7 +1314,7 @@ canvas {
 
 .positions-table th {
   padding: 12px;
-  color: #64748b;
+  color: #94a3b8;
   font-weight: 600;
   border-bottom: 1px solid rgba(51, 65, 85, 0.4);
 }
@@ -1348,7 +1348,7 @@ canvas {
 }
 
 .side-badge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 4px;
@@ -1373,7 +1373,7 @@ canvas {
   align-items: center;
   gap: 12px;
   padding: 30px 10px;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .positions-icon {
@@ -1382,7 +1382,7 @@ canvas {
 
 /* Mode Badge */
 .mode-badge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 9999px;
@@ -1554,7 +1554,7 @@ canvas {
 
 .btn-small {
   padding: 6px 12px;
-  font-size: 11px;
+  font-size: 12px;
   border-radius: 6px;
 }
 
@@ -1579,7 +1579,7 @@ canvas {
 }
 
 .btn-manual-trade {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   padding: 4px 10px;
 }
@@ -1589,7 +1589,7 @@ canvas {
   border: 1px solid rgba(244, 63, 94, 0.3);
   color: #fb7185;
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: 12px;
   border-radius: 6px;
   font-weight: 700;
   cursor: pointer;
@@ -1678,7 +1678,7 @@ canvas {
 
 .disabled-input {
   background: rgba(30, 41, 59, 0.5) !important;
-  color: #64748b !important;
+  color: #94a3b8 !important;
   cursor: not-allowed;
 }
 
@@ -1721,9 +1721,9 @@ canvas {
 }
 
 .summary-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: #64748b;
+  color: #94a3b8;
   text-transform: uppercase;
   margin-bottom: 10px;
   letter-spacing: 0.5px;
@@ -1742,7 +1742,7 @@ canvas {
 }
 
 .summary-item .lbl {
-  font-size: 10px;
+  font-size: 12px;
   color: #94a3b8;
 }
 
@@ -1835,7 +1835,7 @@ canvas {
   font-weight: 700;
   box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
   padding: 6px 10px;
-  font-size: 10px;
+  font-size: 12px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1852,7 +1852,7 @@ canvas {
   font-weight: 700;
   box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
   padding: 6px 10px;
-  font-size: 10px;
+  font-size: 12px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1867,7 +1867,7 @@ canvas {
   color: #10b981 !important;
 }
 .red {
-  color: #ef4444 !important;
+  color: #f87171 !important;
 }
 
 /* Timeframe Selector Styles */
@@ -1927,9 +1927,9 @@ canvas {
 }
 
 .balance-summary-grid .stat-card .stat-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1953,7 +1953,7 @@ canvas {
 }
 
 .balance-summary-grid .stat-card.negative-stat .stat-value {
-  color: #ef4444;
+  color: #f87171;
 }
 
 .config-info-bar {
@@ -1968,7 +1968,7 @@ canvas {
 }
 
 .config-info-bar .info-tag {
-  font-size: 11px;
+  font-size: 12px;
   color: #94a3b8;
   background: rgba(30, 41, 59, 0.4);
   padding: 4px 8px;
@@ -1986,7 +1986,7 @@ canvas {
   justify-content: center;
   padding: 24px;
   font-size: 13px;
-  color: #64748b;
+  color: #94a3b8;
   background: rgba(15, 23, 42, 0.2);
   border-radius: 8px;
   border: 1px solid rgba(51, 65, 85, 0.2);
@@ -2063,7 +2063,7 @@ canvas {
 }
 
 .tooltip-symbol {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   color: #94a3b8;
@@ -2078,7 +2078,7 @@ canvas {
 }
 
 .tooltip-pct {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #10b981;
 }
@@ -2097,8 +2097,8 @@ canvas {
   border: none;
   outline: none;
   padding: 5px 12px;
-  color: #64748b;
-  font-size: 11px;
+  color: #94a3b8;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   border-radius: 6px;
@@ -2187,14 +2187,14 @@ canvas {
 }
 
 .legend-value {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #ffffff;
 }
 
 .legend-pct {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: #94a3b8;
 }
 
