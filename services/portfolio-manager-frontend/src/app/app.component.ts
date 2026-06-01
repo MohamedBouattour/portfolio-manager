@@ -10,6 +10,7 @@ import { SimulationSettingsComponent } from './components/simulation-settings/si
 import { BotDecisionComponent } from './components/bot-decision/bot-decision.component.js';
 import { AppConsoleComponent } from './components/app-console/app-console.component.js';
 import { ManualOrderModalComponent } from './components/manual-order-modal/manual-order-modal.component.js';
+import { PortfolioAllocationComponent } from './components/portfolio-allocation/portfolio-allocation.component.js';
 
 @Component({
   selector: 'app-root',
@@ -23,7 +24,8 @@ import { ManualOrderModalComponent } from './components/manual-order-modal/manua
     SimulationSettingsComponent,
     BotDecisionComponent,
     AppConsoleComponent,
-    ManualOrderModalComponent
+    ManualOrderModalComponent,
+    PortfolioAllocationComponent
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
