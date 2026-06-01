@@ -198,7 +198,7 @@ export class BybitRestService {
         low: parseFloat(k[3]),
         close: parseFloat(k[4]),
         volume: parseFloat(k[5]),
-      }));
+      })).reverse();
     } catch (err) {
       console.error(`[BybitRestService] Failed to fetch klines for ${symbol}:`, err);
       throw err;

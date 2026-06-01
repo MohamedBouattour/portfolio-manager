@@ -62,12 +62,27 @@ export class StrategyEvaluatorService {
       const pnlPct = initialMargin > 0 ? (rawPnl / initialMargin) * 100 : 0;
 
       if (pnlPct >= profitThresholdPct) {
-        const qtyToReduce = position.size * (reducePct / 100);
-        positionDecision = {
-          action: 'REDUCE' as const,
-          qty: parseFloat(qtyToReduce.toFixed(4)),
-          reason: `Take Profit triggered. PnL is +${pnlPct.toFixed(2)}% >= +${profitThresholdPct}%. Reducing position size by ${reducePct}%.`,
-        };
+        let skipped = false;
+        if (position.lastExecutionPrice && position.lastExecutionSide === 'Sell') {
+          const priceRiseThreshold = profitThresholdPct / leverage;
+          const requiredPrice = position.lastExecutionPrice * (1 + priceRiseThreshold / 100);
+          if (currentMarkPrice < requiredPrice) {
+            positionDecision = {
+              action: 'HOLD' as const,
+              qty: 0,
+              reason: `PnL is +${pnlPct.toFixed(2)}% >= +${profitThresholdPct}%, but price ($${currentMarkPrice.toFixed(2)}) has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price ($${position.lastExecutionPrice.toFixed(2)}). Skipping Take Profit to prevent loop.`,
+            };
+            skipped = true;
+          }
+        }
+        if (!skipped) {
+          const qtyToReduce = position.size * (reducePct / 100);
+          positionDecision = {
+            action: 'REDUCE' as const,
+            qty: parseFloat(qtyToReduce.toFixed(4)),
+            reason: `Take Profit triggered. PnL is +${pnlPct.toFixed(2)}% >= +${profitThresholdPct}%. Reducing position size by ${reducePct}%.`,
+          };
+        }
       } else if (pnlPct <= -rebuyThresholdPct) {
         let skipped = false;
         if (position.lastExecutionPrice && position.lastExecutionSide === 'Buy') {

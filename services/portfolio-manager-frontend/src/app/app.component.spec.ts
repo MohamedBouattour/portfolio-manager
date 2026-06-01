@@ -176,6 +176,26 @@ describe('AppComponent and StateService', () => {
         expect(d.qty).toBe(1.5);
       });
 
+      it('should return HOLD (loop prevention) when lastExecutionPrice exists and markPrice has not risen enough for TP', () => {
+        const pos = {
+          ...basePos, markPrice: 106, unrealisedPnl: 60,
+          lastExecutionPrice: 105, lastExecutionSide: 'Sell' as const,
+        };
+        const d = stateService.getPositionDecision(pos);
+        expect(d.action).toBe('HOLD');
+        expect(d.qty).toBe(0);
+      });
+
+      it('should return REDUCE when lastExecutionPrice exists and markPrice has risen enough for TP', () => {
+        const pos = {
+          ...basePos, markPrice: 111, unrealisedPnl: 100,
+          lastExecutionPrice: 105, lastExecutionSide: 'Sell' as const,
+        };
+        const d = stateService.getPositionDecision(pos);
+        expect(d.action).toBe('REDUCE');
+        expect(d.qty).toBe(1.5);
+      });
+
       it('should return DCA_REBUY when PnL <= -rebuyThresholdPct', () => {
         const pos = { ...basePos, markPrice: 94, unrealisedPnl: -60 };
         const d = stateService.getPositionDecision(pos);

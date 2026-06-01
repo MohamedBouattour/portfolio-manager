@@ -173,6 +173,18 @@ export class TradingEngineService {
       log.info(`[Manual Mode] Take Profit trigger met for ${pos.symbol} (PnL: ${currentPnL.toFixed(2)}%). Skipping automatic order execution.`);
       return;
     }
+
+    if (pos.lastExecutionPrice && pos.lastExecutionSide === 'Sell') {
+      const priceRiseThreshold = config.profitThresholdPct / pos.leverage;
+      const requiredPrice = pos.lastExecutionPrice * (1 + priceRiseThreshold / 100);
+      if (pos.markPrice < requiredPrice) {
+        log.info(
+          `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% >= +${config.profitThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price $${pos.lastExecutionPrice.toFixed(2)}. Skipping Take Profit.`
+        );
+        return;
+      }
+    }
+
     const rawReduceQty = pos.size * (config.reducePct / 100);
     const qty = roundQty(rawReduceQty, spec);
 

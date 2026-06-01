@@ -267,6 +267,19 @@ export class StateService {
     const rebuyQty = this.rebuyQtyPct();
 
     if (pnlPct >= profitThreshold) {
+      // Loop prevention check
+      if (pos.lastExecutionPrice && pos.lastExecutionSide === 'Sell') {
+        const priceRiseThreshold = profitThreshold / pos.leverage;
+        const requiredPrice = pos.lastExecutionPrice * (1 + priceRiseThreshold / 100);
+        if (pos.markPrice < requiredPrice) {
+          return {
+            action: 'HOLD',
+            qty: 0,
+            reason: `PnL is +${pnlPct.toFixed(2)}% >= +${profitThreshold}%, but price ($${pos.markPrice.toFixed(2)}) has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price ($${pos.lastExecutionPrice.toFixed(2)}). Skipping Take Profit to prevent loop.`
+          };
+        }
+      }
+
       const qtyToReduce = pos.size * (reduce / 100);
       return {
         action: 'REDUCE',
