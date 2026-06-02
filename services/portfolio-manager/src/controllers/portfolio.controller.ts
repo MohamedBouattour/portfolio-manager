@@ -29,7 +29,7 @@ export class PortfolioController {
       profitThresholdPct: parseFloat(process.env.PROFIT_THRESHOLD_PCT || '15'),
       rebuyThresholdPct: parseFloat(process.env.REBUY_THRESHOLD_PCT || '15'),
       reducePct: parseFloat(process.env.REDUCE_PCT || process.env.POSITION_REDUCE_PCT || '15'),
-      maxAllocPct: parseFloat(process.env.MAX_ALLOC_PCT || '20'),
+      maxAllocPct: parseFloat(process.env.MAX_ALLOC_PCT || '5'),
     };
   }
 

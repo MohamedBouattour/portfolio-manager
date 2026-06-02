@@ -30,7 +30,7 @@ export class TradingEngineService {
       rebuyThresholdPct: parseFloat(process.env.REBUY_THRESHOLD_PCT || '15'),
       reducePct: parseFloat(process.env.REDUCE_PCT || process.env.POSITION_REDUCE_PCT || '15'),
       rebuyQtyPct: parseFloat(process.env.REBUY_QTY_PCT || '15'),
-      maxAllocPct: parseFloat(process.env.MAX_ALLOC_PCT || '20'),
+      maxAllocPct: parseFloat(process.env.MAX_ALLOC_PCT || '5'),
       manualMode: process.env.MANUAL_MODE === 'true',
     };
 
