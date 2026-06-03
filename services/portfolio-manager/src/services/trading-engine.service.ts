@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConnectorExchangeService } from './connector-exchange.service.js';
 import { ScouterStrategyService } from './scouter-strategy.service.js';
+import { ExecutionStoreService } from './execution-store.service.js';
 import { Position, InstrumentSpec, BotConfig } from '@portfolio/contracts';
 import { getTimeframe } from '@portfolio/contracts/utils';
 import { roundQty } from '../utils/math.js';
@@ -10,7 +11,8 @@ import { log } from '../utils/logger.js';
 export class TradingEngineService {
   constructor(
     private readonly exchange: ConnectorExchangeService,
-    private readonly scouter: ScouterStrategyService
+    private readonly scouter: ScouterStrategyService,
+    private readonly executionStore: ExecutionStoreService
   ) {}
 
   public async runCycle(): Promise<string> {
@@ -158,12 +160,14 @@ export class TradingEngineService {
       return;
     }
 
-    if (pos.lastExecutionPrice && pos.lastExecutionSide === 'Sell') {
+    const lastSellPrice = this.executionStore.get(pos.symbol)?.lastExecutionPrice ?? pos.lastExecutionPrice;
+    const lastSellSide = this.executionStore.get(pos.symbol)?.lastExecutionSide ?? pos.lastExecutionSide;
+    if (lastSellPrice && lastSellSide === 'Sell') {
       const priceRiseThreshold = config.profitThresholdPct / pos.leverage;
-      const requiredPrice = pos.lastExecutionPrice * (1 + priceRiseThreshold / 100);
+      const requiredPrice = lastSellPrice * (1 + priceRiseThreshold / 100);
       if (pos.markPrice < requiredPrice) {
         log.info(
-          `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% >= +${config.profitThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price $${pos.lastExecutionPrice.toFixed(2)}. Skipping Take Profit.`
+          `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% >= +${config.profitThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price $${lastSellPrice.toFixed(2)}. Skipping Take Profit.`
         );
         return;
       }
@@ -188,6 +192,7 @@ export class TradingEngineService {
     });
 
     if (result) {
+      this.executionStore.set(pos.symbol, pos.markPrice, orderSide);
       log.ok(`✔ TAKE-PROFIT executed successfully for ${pos.symbol} (PnL: ${currentPnL.toFixed(2)}%)`, result);
     }
   }
@@ -198,12 +203,14 @@ export class TradingEngineService {
       return;
     }
 
-    if (pos.lastExecutionPrice && pos.lastExecutionSide === 'Buy') {
+    const lastBuyPrice = this.executionStore.get(pos.symbol)?.lastExecutionPrice ?? pos.lastExecutionPrice;
+    const lastBuySide = this.executionStore.get(pos.symbol)?.lastExecutionSide ?? pos.lastExecutionSide;
+    if (lastBuyPrice && lastBuySide === 'Buy') {
       const priceDropThreshold = config.rebuyThresholdPct / pos.leverage;
-      const requiredPrice = pos.lastExecutionPrice * (1 - priceDropThreshold / 100);
+      const requiredPrice = lastBuyPrice * (1 - priceDropThreshold / 100);
       if (pos.markPrice > requiredPrice) {
         log.info(
-          `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% <= -${config.rebuyThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price $${pos.lastExecutionPrice.toFixed(2)}. Skipping DCA Rebuy.`
+          `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% <= -${config.rebuyThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price $${lastBuyPrice.toFixed(2)}. Skipping DCA Rebuy.`
         );
         return;
       }
@@ -233,6 +240,7 @@ export class TradingEngineService {
     });
 
     if (result) {
+      this.executionStore.set(pos.symbol, pos.markPrice, pos.side);
       log.ok(`✔ DCA REBUY executed successfully for ${pos.symbol} (PnL: ${currentPnL.toFixed(2)}%)`, result);
     }
   }

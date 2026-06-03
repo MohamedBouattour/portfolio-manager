@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectionStrategy, ViewEncapsulation } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { StateService } from './core/services/state.service.js';
 import { HeaderComponent } from './components/header/header.component.js';
 import { MomentumTickerComponent } from './components/momentum-ticker/momentum-ticker.component.js';
@@ -29,7 +29,6 @@ import { PortfolioAllocationComponent } from './components/portfolio-allocation/
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
-  encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(window:keydown)': 'handleKeyDown($event)'

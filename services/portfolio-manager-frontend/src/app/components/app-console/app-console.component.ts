@@ -8,22 +8,22 @@ import { StateService } from '../../core/services/state.service.js';
   template: `
     <div class="card console-card">
       <div class="card-header">
-        <div class="header-left flex-row align-center gap-10">
-          <span class="terminal-dots">
-            <span class="dot red"></span>
-            <span class="dot yellow"></span>
-            <span class="dot green"></span>
+        <div class="flex items-center gap-2.5">
+          <span class="flex gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-rose-400"></span>
+            <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+            <span class="w-3 h-3 rounded-full bg-emerald-400"></span>
           </span>
-          <h3>🤖 Bot Live Execution Log Console</h3>
+          <h3 class="text-sm font-semibold text-slate-100">&#x1F916; Bot Live Execution Log Console</h3>
         </div>
         @if (state.latestLogTimestamp() > 0) {
-          <span class="log-timestamp-badge">
+          <span class="text-[11px] font-mono bg-white/5 px-2 py-0.5 rounded text-slate-400">
             Last Run: {{ formatCandleDate(state.latestLogTimestamp() / 1000) }}
           </span>
         }
       </div>
-      <div class="console-body">
-        <pre class="console-output"><code>{{ state.latestLog() }}</code></pre>
+      <div class="p-4 max-h-[350px] overflow-y-auto bg-slate-950/80">
+        <pre class="m-0 whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-slate-200"><code>{{ state.latestLog() }}</code></pre>
       </div>
     </div>
   `,

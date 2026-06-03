@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
 import { ConnectorExchangeService } from '../services/connector-exchange.service.js';
 import { TradingEngineService } from '../services/trading-engine.service.js';
+import { ExecutionStoreService } from '../services/execution-store.service.js';
 import { getLogsDir, getTimeframe, setTimeframe } from '@portfolio/contracts/utils';
 import { roundQty } from '../utils/math.js';
 import * as fs from 'fs';
@@ -10,7 +11,8 @@ import * as path from 'path';
 export class PortfolioController {
   constructor(
     private readonly exchange: ConnectorExchangeService,
-    private readonly tradingEngineService: TradingEngineService
+    private readonly tradingEngineService: TradingEngineService,
+    private readonly executionStore: ExecutionStoreService
   ) {}
 
   @Get('config')
@@ -64,25 +66,42 @@ export class PortfolioController {
       const enriched = positions.map((pos) => {
         const initialMargin = pos.positionValue / pos.leverage;
         const pnlPct = initialMargin > 0 ? (pos.unrealisedPnl / initialMargin) * 100 : 0;
-        
+
+        const storedExec = this.executionStore.get(pos.symbol);
+        const lastExecPrice = storedExec?.lastExecutionPrice ?? pos.lastExecutionPrice;
+        const lastExecSide = storedExec?.lastExecutionSide ?? pos.lastExecutionSide;
+
         let action = 'HOLD';
         let qty = 0;
         let reason = `PnL is ${pnlPct.toFixed(2)}% (within [-${rebuyThresholdPct}%, +${profitThresholdPct}%]). Holding position.`;
 
         if (pnlPct >= profitThresholdPct) {
-          const qtyToReduce = pos.size * (reducePct / 100);
-          action = 'REDUCE';
-          qty = parseFloat(qtyToReduce.toFixed(4));
-          reason = `Take Profit triggered. PnL is +${pnlPct.toFixed(2)}% >= +${profitThresholdPct}%. Reducing position size by ${reducePct}%.`;
+          let skipped = false;
+          if (lastExecPrice && lastExecSide === 'Sell') {
+            const priceRiseThreshold = profitThresholdPct / pos.leverage;
+            const requiredPrice = lastExecPrice * (1 + priceRiseThreshold / 100);
+            if (pos.markPrice < requiredPrice) {
+              action = 'HOLD';
+              qty = 0;
+              reason = `PnL is +${pnlPct.toFixed(2)}% >= +${profitThresholdPct}%, but price ($${pos.markPrice.toFixed(2)}) has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price ($${lastExecPrice.toFixed(2)}). Skipping TP to prevent loop.`;
+              skipped = true;
+            }
+          }
+          if (!skipped) {
+            const qtyToReduce = pos.size * (reducePct / 100);
+            action = 'REDUCE';
+            qty = parseFloat(qtyToReduce.toFixed(4));
+            reason = `Take Profit triggered. PnL is +${pnlPct.toFixed(2)}% >= +${profitThresholdPct}%. Reducing position size by ${reducePct}%.`;
+          }
         } else if (pnlPct <= -rebuyThresholdPct) {
           let skipped = false;
-          if (pos.lastExecutionPrice && pos.lastExecutionSide === 'Buy') {
+          if (lastExecPrice && lastExecSide === 'Buy') {
             const priceDropThreshold = rebuyThresholdPct / pos.leverage;
-            const requiredPrice = pos.lastExecutionPrice * (1 - priceDropThreshold / 100);
+            const requiredPrice = lastExecPrice * (1 - priceDropThreshold / 100);
             if (pos.markPrice > requiredPrice) {
               action = 'HOLD';
               qty = 0;
-              reason = `PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThresholdPct}%, but price ($${pos.markPrice.toFixed(2)}) has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price ($${pos.lastExecutionPrice.toFixed(2)}). Skipping rebuy to prevent loop.`;
+              reason = `PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThresholdPct}%, but price ($${pos.markPrice.toFixed(2)}) has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price ($${lastExecPrice.toFixed(2)}). Skipping rebuy to prevent loop.`;
               skipped = true;
             }
           }
@@ -97,6 +116,8 @@ export class PortfolioController {
 
         return {
           ...pos,
+          lastExecutionPrice: lastExecPrice,
+          lastExecutionSide: lastExecSide,
           decision: { action, qty, reason }
         };
       });

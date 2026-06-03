@@ -1,41 +1,31 @@
-<!-- Header -->
-<app-header></app-header>
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <app-header></app-header>
 
-<!-- Momentum Ticker -->
-<app-momentum-ticker></app-momentum-ticker>
+  <app-momentum-ticker></app-momentum-ticker>
 
-<!-- Main Workspace Layout -->
-<div class="dashboard-grid">
-  <!-- Sidebar Asset Catalog -->
-  <app-stock-catalog></app-stock-catalog>
+  <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 pb-10">
+    <div class="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 lg:gap-6">
+      <app-stock-catalog></app-stock-catalog>
 
-  <!-- Main Analysis Workspace -->
-  <main class="workspace">
-    <!-- Interactive Chart -->
-    <app-historical-chart></app-historical-chart>
+      <main class="min-w-0 space-y-4 lg:space-y-6">
+        <app-historical-chart></app-historical-chart>
 
-    <!-- Side-by-side Configuration & Bot Decision -->
-    <div class="workspace-grid grid-2">
-      <!-- Simulated Position Config -->
-      <app-simulation-settings></app-simulation-settings>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
+          <app-simulation-settings></app-simulation-settings>
+          <app-bot-decision></app-bot-decision>
+        </div>
 
-      <!-- Bot Engine Decision -->
-      <app-bot-decision></app-bot-decision>
+        <div class="grid grid-cols-1 lg:grid-cols-[1.7fr_1.3fr] gap-4 lg:gap-5">
+          <app-positions-table></app-positions-table>
+          <app-portfolio-allocation></app-portfolio-allocation>
+        </div>
+
+        <app-uptrend-scouter></app-uptrend-scouter>
+
+        <app-app-console></app-app-console>
+      </main>
     </div>
-
-    <!-- Positions Table and Allocation Chart Row -->
-    <div class="positions-allocation-grid">
-      <app-positions-table class="positions-table-col"></app-positions-table>
-      <app-portfolio-allocation class="allocation-chart-col"></app-portfolio-allocation>
-    </div>
-
-    <!-- Potential Uptrends / Scouting Dashboard -->
-    <app-uptrend-scouter></app-uptrend-scouter>
-
-    <!-- Real-time Console Logs -->
-    <app-app-console></app-app-console>
-  </main>
+  </div>
 </div>
 
-<!-- Manual Order Modal Backdrop Overlay -->
 <app-manual-order-modal></app-manual-order-modal>

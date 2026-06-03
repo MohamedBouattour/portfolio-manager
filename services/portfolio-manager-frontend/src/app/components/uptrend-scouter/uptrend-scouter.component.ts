@@ -6,176 +6,148 @@ import { StateService } from '../../core/services/state.service.js';
   selector: 'app-uptrend-scouter',
   imports: [CommonModule],
   template: `
-    <div class="card scouter-dashboard-card">
-      <div class="card-header">
-        <div class="flex-row align-center gap-10">
-          <h3>📡 Market Scouter</h3>
-          <div class="timeframe-badge">
-            <span class="label">Timeframe:</span>
-            <span class="badge">1D (Daily)</span>
+    <div class="card border-blue-500/20 shadow-[0_8px_32px_0_rgba(59,130,246,0.05)]">
+      <div class="card-header flex-wrap gap-2">
+        <div class="flex items-center gap-2.5">
+          <h3 class="text-sm font-semibold text-slate-100">&#x1F4E1; Market Scouter</h3>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Timeframe:</span>
+            <span class="px-2.5 py-1 rounded-full text-xs font-semibold border bg-blue-500/10 text-blue-400 border-blue-500/20">1D (Daily)</span>
           </div>
         </div>
-        <div class="scouter-header-right">
-          <span class="scout-badge">
+        <div class="flex items-center gap-2.5">
+          <span class="text-[11px] font-semibold bg-blue-500/10 text-blue-400 px-2.5 py-1 rounded-full border border-blue-500/20">
             Scanning {{ state.scoutingResults().length }} Assets
           </span>
         </div>
       </div>
 
-      <!-- Summary Banner -->
-      <div class="scouter-summary-bar">
-        <div class="summary-chip entry-chip">
-          <span class="chip-dot entry-dot"></span>
-          <span class="chip-count">{{ state.getScoutingSummary().entry }}</span>
-          <span class="chip-label">Entry Signals</span>
+      <div class="flex gap-3 p-3.5 bg-slate-900/50 border-b border-slate-700/30 overflow-x-auto">
+        <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs border border-slate-700/30 bg-slate-700/30 shrink-0" style="border-color: rgba(16,185,129,0.25)">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0" style="box-shadow: 0 0 8px rgba(16,185,129,0.6)"></span>
+          <span class="font-bold text-sm text-slate-100">{{ state.getScoutingSummary().entry }}</span>
+          <span class="text-slate-400 font-medium">Entry Signals</span>
         </div>
-        <div class="summary-chip near-chip">
-          <span class="chip-dot near-dot"></span>
-          <span class="chip-count">{{ state.getScoutingSummary().nearSignal }}</span>
-          <span class="chip-label">Near Signal</span>
+        <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs border border-slate-700/30 bg-slate-700/30 shrink-0" style="border-color: rgba(251,191,36,0.2)">
+          <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0" style="box-shadow: 0 0 6px rgba(251,191,36,0.4)"></span>
+          <span class="font-bold text-sm text-slate-100">{{ state.getScoutingSummary().nearSignal }}</span>
+          <span class="text-slate-400 font-medium">Near Signal</span>
         </div>
-        <div class="summary-chip idle-chip">
-          <span class="chip-dot idle-dot"></span>
-          <span class="chip-count">{{ state.getScoutingSummary().noSignal }}</span>
-          <span class="chip-label">No Signal</span>
+        <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs border border-slate-700/30 bg-slate-700/30 shrink-0">
+          <span class="w-2 h-2 rounded-full bg-slate-500 shrink-0"></span>
+          <span class="font-bold text-sm text-slate-100">{{ state.getScoutingSummary().noSignal }}</span>
+          <span class="text-slate-400 font-medium">No Signal</span>
         </div>
       </div>
 
-      <!-- Scouting Table -->
-      <div class="scouter-table-wrapper">
+      <div class="overflow-x-auto">
         @if (state.sortedScoutingResults().length > 0) {
-          <table class="scouter-table">
+          <table class="w-full border-collapse text-left text-xs">
             <thead>
               <tr>
-                <th class="th-asset">Asset</th>
-                <th class="th-sortable" (click)="state.toggleScoutingSort('price')">
-                  Price
-                  <span class="sort-icon">{{ getSortIcon('price') }}</span>
+                <th class="p-3 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-700/50 bg-slate-900/80 sticky top-0 z-10 whitespace-nowrap">Asset</th>
+                <th class="p-3 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-700/50 bg-slate-900/80 sticky top-0 z-10 whitespace-nowrap cursor-pointer hover:text-blue-400 select-none" (click)="state.toggleScoutingSort('price')">
+                  Price <span class="text-xs opacity-75">{{ getSortIcon('price') }}</span>
                 </th>
-                <th class="th-sortable th-confidence" (click)="state.toggleScoutingSort('confidence')">
-                  Confidence
-                  <span class="sort-icon">{{ getSortIcon('confidence') }}</span>
+                <th class="p-3 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-700/50 bg-slate-900/80 sticky top-0 z-10 whitespace-nowrap cursor-pointer hover:text-blue-400 select-none" (click)="state.toggleScoutingSort('confidence')">
+                  Confidence <span class="text-xs opacity-75">{{ getSortIcon('confidence') }}</span>
                 </th>
-                <th class="th-strategies">Strategies</th>
-                <th class="th-sortable" (click)="state.toggleScoutingSort('rsi')">
-                  RSI
-                  <span class="sort-icon">{{ getSortIcon('rsi') }}</span>
+                <th class="p-3 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-700/50 bg-slate-900/80 sticky top-0 z-10 whitespace-nowrap">Strategies</th>
+                <th class="p-3 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-700/50 bg-slate-900/80 sticky top-0 z-10 whitespace-nowrap cursor-pointer hover:text-blue-400 select-none" (click)="state.toggleScoutingSort('rsi')">
+                  RSI <span class="text-xs opacity-75">{{ getSortIcon('rsi') }}</span>
                 </th>
-                <th class="th-sortable" (click)="state.toggleScoutingSort('histogram')">
-                  MACD Hist
-                  <span class="sort-icon">{{ getSortIcon('histogram') }}</span>
+                <th class="p-3 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-700/50 bg-slate-900/80 sticky top-0 z-10 whitespace-nowrap cursor-pointer hover:text-blue-400 select-none" (click)="state.toggleScoutingSort('histogram')">
+                  MACD Hist <span class="text-xs opacity-75">{{ getSortIcon('histogram') }}</span>
                 </th>
-                <th class="th-sortable" (click)="state.toggleScoutingSort('volumeRatio')">
-                  Vol Ratio
-                  <span class="sort-icon">{{ getSortIcon('volumeRatio') }}</span>
+                <th class="p-3 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-700/50 bg-slate-900/80 sticky top-0 z-10 whitespace-nowrap cursor-pointer hover:text-blue-400 select-none" (click)="state.toggleScoutingSort('volumeRatio')">
+                  Vol Ratio <span class="text-xs opacity-75">{{ getSortIcon('volumeRatio') }}</span>
                 </th>
-                <th class="th-action"></th>
+                <th class="p-3"></th>
               </tr>
             </thead>
             <tbody>
               @for (item of state.sortedScoutingResults(); track item.symbol) {
-                <tr 
-                  class="scouter-row"
-                  [class.signal-row]="item.shouldEnter"
-                  [class.near-signal-row]="!item.shouldEnter && (item.confidence ?? 0) >= 40"
+                <tr
+                  class="cursor-pointer transition-colors hover:bg-slate-700/15"
+                  [ngClass]="item.shouldEnter ? 'bg-emerald-500/[0.04]' : (item.confidence ?? 0) >= 40 ? 'bg-amber-500/[0.03]' : ''"
                   (click)="state.selectedAsset.set(item.symbol)"
                 >
-                  <!-- Asset -->
-                  <td class="td-asset">
-                    <div class="scouter-asset-info">
+                  <td class="p-3 border-b border-slate-700/15 whitespace-nowrap">
+                    <div class="flex items-center gap-2.5">
                       @if (!state.logoErrors().has(item.symbol)) {
-                        <img 
-                          [src]="state.getLogoUrl(item.symbol)" 
-                          (error)="state.onLogoError(item.symbol)" 
-                          class="scouter-logo" 
-                          alt="" 
-                        />
+                        <img [src]="state.getLogoUrl(item.symbol)" (error)="state.onLogoError(item.symbol)" class="w-7 h-7 rounded-full object-contain bg-slate-700 border border-white/5 shrink-0" alt="" />
                       } @else {
-                        <div class="scouter-logo fallback" [style.backgroundColor]="state.getLogoColor(item.symbol)">
+                        <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" [style.backgroundColor]="state.getLogoColor(item.symbol)">
                           {{ item.symbol.substring(0, 2) }}
                         </div>
                       }
-                      <div class="asset-name-col">
-                        <span class="scouter-symbol">{{ item.symbol }}</span>
+                      <div class="flex flex-col gap-0.5">
+                        <span class="font-semibold text-slate-100 text-xs">{{ item.symbol }}</span>
                         @if (item.shouldEnter) {
-                          <span class="entry-signal-indicator">🚀 ENTRY</span>
+                          <span class="text-[11px] font-bold text-emerald-500">&#x1F680; ENTRY</span>
                         }
                       </div>
                     </div>
                   </td>
 
-                  <!-- Price -->
-                  <td class="td-price">\${{ item.price.toFixed(2) }}</td>
+                  <td class="p-3 border-b border-slate-700/15 whitespace-nowrap font-semibold text-slate-200 tabular-nums">\${{ item.price.toFixed(2) }}</td>
 
-                  <!-- Confidence -->
-                  <td class="td-confidence">
-                    <div class="confidence-cell">
-                      <div class="confidence-bar-track">
-                        <div 
-                          class="confidence-bar-fill"
-                          [class.conf-low]="(item.confidence ?? 0) < 40"
-                          [class.conf-mid]="(item.confidence ?? 0) >= 40 && (item.confidence ?? 0) < 70"
-                          [class.conf-high]="(item.confidence ?? 0) >= 70"
+                  <td class="p-3 border-b border-slate-700/15 whitespace-nowrap">
+                    <div class="flex items-center gap-2 min-w-[120px]">
+                      <div class="flex-1 h-1.5 bg-slate-700/40 rounded-full overflow-hidden min-w-[60px]">
+                        <div
+                          class="h-full rounded-full transition-all duration-300"
+                          [class.bg-gradient-to-r.from-slate-500.to-slate-400]="(item.confidence ?? 0) < 40"
+                          [class.bg-gradient-to-r.from-amber-600.to-amber-400]="(item.confidence ?? 0) >= 40 && (item.confidence ?? 0) < 70"
+                          [class.bg-gradient-to-r.from-emerald-600.to-emerald-500]="(item.confidence ?? 0) >= 70"
                           [style.width.%]="item.confidence ?? 0"
                         ></div>
                       </div>
-                      <span class="confidence-value">{{ item.confidence ?? 0 }}%</span>
+                      <span class="text-[11px] font-bold text-slate-400 min-w-[32px] text-right tabular-nums">{{ item.confidence ?? 0 }}%</span>
                     </div>
                   </td>
 
-                  <!-- Strategies -->
-                  <td class="td-strategies">
-                    <div class="strategy-pills">
+                  <td class="p-3 border-b border-slate-700/15 whitespace-nowrap">
+                    <div class="flex gap-1 flex-wrap">
                       @if (item.triggeredStrategies && item.triggeredStrategies.length > 0) {
                         @for (strat of item.triggeredStrategies; track strat) {
-                          <span 
-                            class="strategy-pill"
-                            [class.pill-macd]="strat === 'MACD'"
-                            [class.pill-rsi]="strat === 'RSI'"
-                            [class.pill-volume]="strat === 'Volume'"
+                          <span
+                            class="text-[11px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
+                            [ngClass]="strat === 'MACD' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30' : strat === 'RSI' ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'"
                           >{{ strat }}</span>
                         }
                       } @else {
-                        <span class="strategy-pill pill-none">—</span>
+                        <span class="text-[11px] text-slate-400">&mdash;</span>
                       }
                     </div>
                   </td>
 
-                  <!-- RSI -->
-                  <td class="td-rsi">
-                    <span 
-                      [class.rsi-oversold]="(item.rsi ?? 0) > 0 && (item.rsi ?? 0) < 30"
-                      [class.rsi-overbought]="(item.rsi ?? 0) > 70"
-                      [class.rsi-neutral]="(item.rsi ?? 0) >= 30 && (item.rsi ?? 0) <= 70"
+                  <td class="p-3 border-b border-slate-700/15 whitespace-nowrap">
+                    @let rsi = item.rsi ?? 0;
+                    <span
+                      [ngClass]="rsi > 0 && rsi < 30 ? 'text-rose-500 font-bold' : rsi > 70 ? 'text-emerald-500 font-semibold' : 'text-slate-400'"
                     >
-                      {{ (item.rsi ?? 0) > 0 ? (item.rsi).toFixed(1) : '—' }}
+                      {{ rsi > 0 ? rsi.toFixed(1) : '&mdash;' }}
                     </span>
                   </td>
 
-                  <!-- MACD Histogram -->
-                  <td class="td-hist">
-                    <span 
-                      [class.green]="(item.histogram ?? 0) > 0" 
-                      [class.red]="(item.histogram ?? 0) < 0"
-                    >
-                      {{ item.histogram !== undefined ? item.histogram.toFixed(4) : '—' }}
+                  <td class="p-3 border-b border-slate-700/15 whitespace-nowrap">
+                    @let hist = item.histogram;
+                    <span [class.text-emerald-500]="(hist ?? 0) > 0" [class.text-rose-400]="(hist ?? 0) < 0">
+                      {{ hist !== undefined ? hist.toFixed(4) : '&mdash;' }}
                     </span>
                   </td>
 
-                  <!-- Volume Ratio -->
-                  <td class="td-vol">
-                    <span 
-                      [class.vol-spike]="(item.volumeRatio ?? 0) >= 2"
-                      [class.vol-elevated]="(item.volumeRatio ?? 0) >= 1.5 && (item.volumeRatio ?? 0) < 2"
-                    >
-                      {{ (item.volumeRatio ?? 0) > 0 ? (item.volumeRatio).toFixed(1) + 'x' : '—' }}
+                  <td class="p-3 border-b border-slate-700/15 whitespace-nowrap">
+                    @let vol = item.volumeRatio ?? 0;
+                    <span [ngClass]="vol >= 2 ? 'text-amber-400 font-bold' : vol >= 1.5 ? 'text-amber-600 font-semibold' : ''">
+                      {{ vol > 0 ? vol.toFixed(1) + 'x' : '&mdash;' }}
                     </span>
                   </td>
 
-                  <!-- Action -->
-                  <td class="td-action">
-                    <button class="view-chart-btn" (click)="onViewChart($event, item.symbol)">
-                      View Chart →
+                  <td class="p-3 border-b border-slate-700/15 whitespace-nowrap">
+                    <button class="text-[11px] font-semibold px-2 py-1 rounded-md bg-transparent border border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-white hover:-translate-y-0.5 transition-all whitespace-nowrap" (click)="onViewChart($event, item.symbol)">
+                      View Chart &#x2192;
                     </button>
                   </td>
                 </tr>
@@ -183,9 +155,9 @@ import { StateService } from '../../core/services/state.service.js';
             </tbody>
           </table>
         } @else {
-          <div class="no-signals-state">
-            <span class="no-signals-icon">📡</span>
-            <p>Scouting in progress... Waiting for market data to evaluate strategies.</p>
+          <div class="flex flex-col items-center justify-center py-10 text-center text-slate-400">
+            <span class="text-3xl mb-2.5">&#x1F4E1;</span>
+            <p class="text-xs">Scouting in progress... Waiting for market data to evaluate strategies.</p>
           </div>
         }
       </div>
@@ -199,7 +171,6 @@ export class UptrendScouterComponent {
   onViewChart(event: Event, symbol: string) {
     event.stopPropagation();
     this.state.selectedAsset.set(symbol);
-    // Scroll to chart area
     const chartEl = document.querySelector('app-historical-chart');
     if (chartEl) {
       chartEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -207,7 +178,7 @@ export class UptrendScouterComponent {
   }
 
   getSortIcon(field: string): string {
-    if (this.state.scoutingSortField() !== field) return '↕';
-    return this.state.scoutingSortDir() === 'desc' ? '↓' : '↑';
+    if (this.state.scoutingSortField() !== field) return '\u21D5';
+    return this.state.scoutingSortDir() === 'desc' ? '\u2193' : '\u2191';
   }
 }
