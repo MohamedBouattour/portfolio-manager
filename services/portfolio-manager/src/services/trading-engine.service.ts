@@ -52,7 +52,7 @@ export class TradingEngineService {
       }
 
       const openPositions = await this.managePositions(config);
-      await this.scoutEntries(validSymbols, openPositions, config);
+      await this.scoutEntries(openPositions, config);
 
       log.sep();
       log.ok('Trading Engine execution cycle completed successfully.');
@@ -118,54 +118,38 @@ export class TradingEngineService {
     return positions;
   }
 
-  private async scoutEntries(validSymbols: string[], openPositions: Position[], config: BotConfig): Promise<void> {
+  private async scoutEntries(openPositions: Position[], config: BotConfig): Promise<void> {
     log.sep();
-    log.info('── ENTRY SIGNAL SCOUTING ──');
+    log.info('── ENTRY SIGNAL SCOUTING (1D) ──');
 
     const activeHeldSymbols = new Set(openPositions.map((p) => p.symbol));
-    let signalCount = 0;
 
-    for (const symbol of validSymbols) {
-      if (activeHeldSymbols.has(symbol)) {
-        log.info(`${symbol}: already holding position. Skipping scout.`);
-        continue;
-      }
+    // Fetch scouting results (runs all 3 strategies on 1D timeframe)
+    const scoutingResults = await this.scouter.getScoutingStatus();
+    const candidates = scoutingResults.filter(
+      (r) => !activeHeldSymbols.has(r.symbol) && Array.isArray(r.triggeredStrategies) && r.triggeredStrategies.length >= 2
+    );
 
-      const closes = await this.exchange.getCloses(symbol, config.interval, 200);
-      if (closes.length < 2) {
-        log.warn(`${symbol}: insufficient candle history (${closes.length} candles).`);
-        continue;
-      }
+    log.info(`Found ${candidates.length} asset(s) with 2+ indicator confirmation on 1D timeframe.`);
 
-      const evalRes = await this.scouter.evaluate(closes, closes.length - 1);
-      const shouldEnter = evalRes.strategySignal?.shouldEnter;
-      const latestValues = evalRes.strategySignal?.latestValues;
+    for (const sr of candidates) {
+      const triggered = sr.triggeredStrategies.join(', ');
+      log.ok(`🚀 Multi-indicator entry signal for ${sr.symbol} via [${triggered}] (Price: $${sr.price.toFixed(2)}, Confidence: ${sr.confidence}%)`);
 
-      if (latestValues) {
-        log.info(
-          `[Scouting] ${symbol} | MACD: ${latestValues.macd.toFixed(4)} | Signal: ${latestValues.signal.toFixed(4)} | Hist: ${latestValues.histogram.toFixed(4)}`
-        );
-      }
-
-      if (shouldEnter) {
-        signalCount++;
-        log.ok(`🚀 Strategy triggered entry signal for ${symbol}!`);
-        if (config.dryRun) {
-          log.info(`[Scout Only] Would open new LONG position for ${symbol} at close price $${closes[closes.length - 1]}.`);
-        } else {
-          const spec = await this.exchange.getInstrumentSpec(symbol);
-          if (spec) {
-            const lastClose = closes[closes.length - 1];
-            const success = await this.executeNewEntry(symbol, lastClose, spec, config);
-            if (success) {
-              await new Promise((resolve) => setTimeout(resolve, 300));
-            }
+      if (config.dryRun) {
+        log.info(`[Scout Only] Would open new LONG position for ${sr.symbol} at $${sr.price.toFixed(2)}.`);
+      } else {
+        const spec = await this.exchange.getInstrumentSpec(sr.symbol);
+        if (spec) {
+          const success = await this.executeNewEntry(sr.symbol, sr.price, spec, config);
+          if (success) {
+            await new Promise((resolve) => setTimeout(resolve, 300));
           }
         }
       }
     }
 
-    log.info(`Scouting phase complete. Found ${signalCount} signal(s).`);
+    log.info(`Scouting phase complete. Entered ${candidates.length} position(s) with multi-indicator confirmation.`);
   }
 
   private async handleTakeProfit(pos: Position, spec: InstrumentSpec, currentPnL: number, config: BotConfig): Promise<void> {

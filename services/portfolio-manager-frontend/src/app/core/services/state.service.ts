@@ -98,6 +98,15 @@ export class StateService {
     return parseFloat(coin.unrealisedPnl || '0');
   });
 
+  bybitRealisedPnl = computed(() => {
+    const totalGain = this.equity() - this.botBalance();
+    return totalGain - this.bybitTotalUnrealisedPnl();
+  });
+
+  totalFloatingPnl = computed(() => {
+    return this.equity() - this.botBalance();
+  });
+
   roiFromInitial = computed(() => {
     const initial = this.botBalance(); // this is BALANCE from .env
     const currentEquity = this.equity();

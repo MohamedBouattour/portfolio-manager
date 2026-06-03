@@ -14,4 +14,9 @@ export class ScouterStrategyService {
     });
     return res.data;
   }
+
+  async getScoutingStatus(): Promise<any[]> {
+    const res = await axios.get(`${SCOUTER_URL}/api/scouting-status`);
+    return res.data;
+  }
 }

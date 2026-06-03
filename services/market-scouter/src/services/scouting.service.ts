@@ -5,7 +5,7 @@ import { VolumeSpikeStrategy } from '../strategies/volume-spike.strategy.js';
 import { StrategyEvaluatorService } from './strategy-evaluator.service.js';
 import { DEFAULT_STOCK_SYMBOLS } from '../strategies/constants.js';
 import type { IScoutStrategy, StrategyResult } from '../strategies/strategy.interface.js';
-import { getLogsDir, getTimeframe } from '@portfolio/contracts/utils';
+import { getLogsDir } from '@portfolio/contracts/utils';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -52,7 +52,7 @@ export class ScoutingService {
 
   async getScoutingStatus(): Promise<ScoutResult[]> {
     const now = Date.now();
-    const tf = getTimeframe();
+    const tf = 'D';
     if (this.cache && this.cachedTimeframe === tf && now - this.lastFetchTime < 60000) {
       return this.cache;
     }
@@ -80,8 +80,7 @@ export class ScoutingService {
 
       logWrite('ℹ', `Discovered ${symbols.length} active TradFi stock symbols.`);
       const strategyNames = this.strategies.map(s => s.name).join(', ');
-      const tfName = tf === 'D' ? '1D' : tf === '240' ? '4h' : tf === '60' ? '1h' : tf;
-      logWrite('ℹ', `Evaluating strategies [${strategyNames}] on ${tfName} interval...`);
+      logWrite('ℹ', `Evaluating strategies [${strategyNames}] on 1D (Daily) interval...`);
 
       const minCandles = this.evaluator.getMinCandles();
 
@@ -91,7 +90,7 @@ export class ScoutingService {
             const res = await axios.get(`${CONNECTOR_URL}/api/klines`, {
               params: {
                 symbol,
-                interval: tf,
+                interval: 'D',
                 limit: 100,
               }
             });

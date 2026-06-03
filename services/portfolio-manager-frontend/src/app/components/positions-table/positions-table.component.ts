@@ -35,9 +35,21 @@ import { StateService } from '../../core/services/state.service.js';
               <span class="stat-value">\${{ state.equity().toFixed(2) }}</span>
             </div>
             <div class="stat-card" [class.positive-stat]="state.bybitTotalUnrealisedPnl() > 0" [class.negative-stat]="state.bybitTotalUnrealisedPnl() < 0">
-              <span class="stat-label">Total Unrealised PnL</span>
+              <span class="stat-label">Unrealised PnL</span>
               <span class="stat-value">
                 {{ state.bybitTotalUnrealisedPnl() >= 0 ? '+' : '' }}\${{ state.bybitTotalUnrealisedPnl().toFixed(2) }}
+              </span>
+            </div>
+            <div class="stat-card" [class.positive-stat]="state.bybitRealisedPnl() > 0" [class.negative-stat]="state.bybitRealisedPnl() < 0">
+              <span class="stat-label">Realised PnL</span>
+              <span class="stat-value">
+                {{ state.bybitRealisedPnl() >= 0 ? '+' : '' }}\${{ state.bybitRealisedPnl().toFixed(2) }}
+              </span>
+            </div>
+            <div class="stat-card" [class.positive-stat]="state.totalFloatingPnl() > 0" [class.negative-stat]="state.totalFloatingPnl() < 0">
+              <span class="stat-label">Total Floating PnL</span>
+              <span class="stat-value">
+                {{ state.totalFloatingPnl() >= 0 ? '+' : '' }}\${{ state.totalFloatingPnl().toFixed(2) }}
               </span>
             </div>
             <div class="stat-card" [class.positive-stat]="state.roiFromInitial() > 0" [class.negative-stat]="state.roiFromInitial() < 0">

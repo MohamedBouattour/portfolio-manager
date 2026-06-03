@@ -10,17 +10,9 @@ import { StateService } from '../../core/services/state.service.js';
       <div class="card-header">
         <div class="flex-row align-center gap-10">
           <h3>📡 Market Scouter</h3>
-          <div class="timeframe-select-container">
+          <div class="timeframe-badge">
             <span class="label">Timeframe:</span>
-            <select 
-              [value]="state.timeframe()" 
-              (change)="onTimeframeChange($any($event.target).value)"
-              class="timeframe-select"
-            >
-              <option value="1h">1h (60m)</option>
-              <option value="4h">4h (240m)</option>
-              <option value="1D">1D (Daily)</option>
-            </select>
+            <span class="badge">1D (Daily)</span>
           </div>
         </div>
         <div class="scouter-header-right">
@@ -203,10 +195,6 @@ import { StateService } from '../../core/services/state.service.js';
 })
 export class UptrendScouterComponent {
   state = inject(StateService);
-
-  onTimeframeChange(tf: string) {
-    this.state.updateTimeframe(tf);
-  }
 
   onViewChart(event: Event, symbol: string) {
     event.stopPropagation();
