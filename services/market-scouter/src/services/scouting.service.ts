@@ -130,7 +130,7 @@ export class ScoutingService {
               .filter(r => isStrategyTriggered(r))
               .map(r => r.strategyName);
 
-            const shouldEnter = strategyResults.some(r => r.shouldEnter);
+            const shouldEnter = triggeredStrategies.length >= 2;
 
             // Composite confidence: weighted average of all strategy confidences
             // Strategies that triggered get 2x weight
@@ -141,7 +141,14 @@ export class ScoutingService {
               weightedConfidence += sr.confidence * weight;
               totalWeight += weight;
             }
-            const compositeConfidence = totalWeight > 0 ? Math.round(weightedConfidence / totalWeight) : 0;
+            let compositeConfidence = totalWeight > 0 ? Math.round(weightedConfidence / totalWeight) : 0;
+
+            // Multi-indicator Synergy Bonus
+            if (triggeredStrategies.length === 2) {
+              compositeConfidence = Math.min(compositeConfidence + 20, 100);
+            } else if (triggeredStrategies.length >= 3) {
+              compositeConfidence = Math.min(compositeConfidence + 40, 100);
+            }
 
             // Extract specific indicator values for display
             const macdResult = strategyResults.find(r => r.strategyName === 'MACD');

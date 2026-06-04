@@ -1,6 +1,7 @@
 import { Component, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { StateService } from '../../core/services/state.service.js';
+import { Position } from '../../types.js';
 
 @Component({
   selector: 'app-positions-table',
@@ -47,8 +48,8 @@ import { StateService } from '../../core/services/state.service.js';
                     <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">Size</th>
                     <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">Entry &#x2192; Mark</th>
                     <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">PnL</th>
-                    <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">Allocation</th>
-                    <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">Last Action</th>
+                    <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">DCA New Avg</th>
+                    <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">New ROI</th>
                     <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap text-right">Execute</th>
                   </tr>
                 </thead>
@@ -56,9 +57,9 @@ import { StateService } from '../../core/services/state.service.js';
                   @for (pos of sortedPositions(); track pos.symbol) {
                     @let decision = state.getPositionDecision(pos);
                     @let pnlPct = state.getPnlPercent(pos);
-                    @let weight = getPositionWeight(pos);
                     @let isDca = decision.action === 'DCA_REBUY';
                     @let isTp = decision.action === 'REDUCE';
+                    @let dca = getDcaDetails(pos);
                     
                     <tr
                       (click)="state.selectAsset(pos.symbol)"
@@ -120,26 +121,29 @@ import { StateService } from '../../core/services/state.service.js';
                           {{ pnlPct >= 0 ? '+' : '' }}{{ pnlPct.toFixed(2) }}%
                         </div>
                       </td>
-                      <td class="p-3 whitespace-nowrap min-w-[100px]">
-                        <div class="flex items-center gap-2">
-                          <span class="font-bold text-slate-200 font-mono text-xs tabular-nums">{{ weight.toFixed(1) }}%</span>
-                          <div class="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden min-w-[40px]">
-                            <div class="h-full bg-[#10b981] rounded-full" [style.width.%]="weight"></div>
+                      <td class="p-3 whitespace-nowrap">
+                        <div class="flex flex-col">
+                          <div class="flex items-center gap-1 font-mono text-xs tabular-nums">
+                            <span class="text-slate-400">\${{ pos.avgPrice.toFixed(2) }}</span>
+                            <span class="text-sky-400 font-bold">&#x2192;</span>
+                            <span class="text-white font-bold">\${{ dca.newAvgPrice.toFixed(2) }}</span>
+                          </div>
+                          <div class="text-[10px] font-semibold text-slate-500 font-mono mt-0.5">
+                            {{ pos.side === 'Buy' ? 'Buy' : 'Sell' }} +{{ state.rebuyQtyPct() }}% (+{{ dca.qty.toFixed(3) }})
                           </div>
                         </div>
                       </td>
                       <td class="p-3 whitespace-nowrap">
-                        @if (pos.lastExecutionPrice && pos.lastExecutionSide) {
-                          <span class="text-xs font-mono tabular-nums">
-                            <span [class.text-emerald-400]="pos.lastExecutionSide === 'Buy'" [class.text-rose-400]="pos.lastExecutionSide === 'Sell'" class="font-bold">
-                              {{ pos.lastExecutionSide === 'Buy' ? 'Buy' : 'Sell' }}
-                            </span>
-                            <span class="text-slate-400"> &#64; </span>
-                            <span class="text-slate-200 font-bold">\${{ pos.lastExecutionPrice.toFixed(2) }}</span>
-                          </span>
-                        } @else {
-                          <span class="text-slate-400">&mdash;</span>
-                        }
+                        <div class="flex flex-col">
+                          <div class="flex items-center gap-1 font-mono text-xs tabular-nums">
+                            <span [ngClass]="pnlPct >= 0 ? 'text-emerald-500/80' : 'text-rose-500/80'">{{ pnlPct >= 0 ? '+' : '' }}{{ pnlPct.toFixed(2) }}%</span>
+                            <span class="text-sky-400 font-bold">&#x2192;</span>
+                            <span [ngClass]="dca.newPnlPct >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'">{{ dca.newPnlPct >= 0 ? '+' : '' }}{{ dca.newPnlPct.toFixed(2) }}%</span>
+                          </div>
+                          <div class="text-[10px] font-semibold text-slate-500 font-mono mt-0.5">
+                            New Margin: \${{ ((pos.size + dca.qty) * dca.newAvgPrice / pos.leverage).toFixed(2) }}
+                          </div>
+                        </div>
                       </td>
                       <td class="p-3 whitespace-nowrap text-right">
                         <div class="inline-flex items-center gap-2 justify-end">
@@ -221,6 +225,20 @@ export class PositionsTableComponent {
   sortedPositions = computed(() => {
     return [...this.state.openPositions()].sort((a, b) => a.unrealisedPnl - b.unrealisedPnl);
   });
+
+  getDcaDetails(pos: Position) {
+    const rebuyQty = this.state.rebuyQtyPct();
+    const dcaQty = pos.size * (rebuyQty / 100);
+    const newSize = pos.size + dcaQty;
+    const newAvgPrice = ((pos.size * pos.avgPrice) + (dcaQty * pos.markPrice)) / newSize;
+    const sideFactor = pos.side === 'Buy' ? 1 : -1;
+    const newPnlPct = newAvgPrice > 0 ? sideFactor * ((pos.markPrice - newAvgPrice) / newAvgPrice) * pos.leverage * 100 : 0;
+    return {
+      qty: dcaQty,
+      newAvgPrice,
+      newPnlPct
+    };
+  }
 
   getPositionWeight(pos: { positionValue: number }): number {
     const equity = this.state.equity();

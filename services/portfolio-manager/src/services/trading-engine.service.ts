@@ -124,34 +124,53 @@ export class TradingEngineService {
     log.sep();
     log.info('── ENTRY SIGNAL SCOUTING (1D) ──');
 
+    const maxPositions = parseInt(process.env.MAX_POSITIONS || '5', 10);
     const activeHeldSymbols = new Set(openPositions.map((p) => p.symbol));
+
+    const currentCount = openPositions.length;
+    if (currentCount >= maxPositions) {
+      log.info(`Positions limit reached (${currentCount}/${maxPositions} open). Skipping new entries.`);
+      return;
+    }
+
+    const availableSlots = maxPositions - currentCount;
 
     // Fetch scouting results (runs all 3 strategies on 1D timeframe)
     const scoutingResults = await this.scouter.getScoutingStatus();
-    const candidates = scoutingResults.filter(
-      (r) => !activeHeldSymbols.has(r.symbol) && Array.isArray(r.triggeredStrategies) && r.triggeredStrategies.length >= 2
+    let candidates = scoutingResults.filter(
+      (r) => !activeHeldSymbols.has(r.symbol) && r.shouldEnter
     );
 
-    log.info(`Found ${candidates.length} asset(s) with 2+ indicator confirmation on 1D timeframe.`);
+    log.info(`Found ${candidates.length} entry candidate(s) with 2+ indicator confirmation on 1D timeframe. Available slots: ${availableSlots}/${maxPositions}.`);
 
+    if (candidates.length > availableSlots) {
+      log.info(`More candidates than available slots. Sorting by confidence score descending to prioritize the best setups...`);
+      candidates.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
+      candidates = candidates.slice(0, availableSlots);
+      log.info(`Prioritized candidate(s) to enter: ${candidates.map(c => c.symbol).join(', ')}`);
+    }
+
+    let enteredCount = 0;
     for (const sr of candidates) {
       const triggered = sr.triggeredStrategies.join(', ');
       log.ok(`🚀 Multi-indicator entry signal for ${sr.symbol} via [${triggered}] (Price: $${sr.price.toFixed(2)}, Confidence: ${sr.confidence}%)`);
 
       if (config.dryRun) {
         log.info(`[Scout Only] Would open new LONG position for ${sr.symbol} at $${sr.price.toFixed(2)}.`);
+        enteredCount++;
       } else {
         const spec = await this.exchange.getInstrumentSpec(sr.symbol);
         if (spec) {
           const success = await this.executeNewEntry(sr.symbol, sr.price, spec, config);
           if (success) {
+            enteredCount++;
             await new Promise((resolve) => setTimeout(resolve, 300));
           }
         }
       }
     }
 
-    log.info(`Scouting phase complete. Entered ${candidates.length} position(s) with multi-indicator confirmation.`);
+    log.info(`Scouting phase complete. Opened ${enteredCount} new position(s).`);
   }
 
   private async handleTakeProfit(pos: Position, spec: InstrumentSpec, currentPnL: number, config: BotConfig): Promise<void> {
