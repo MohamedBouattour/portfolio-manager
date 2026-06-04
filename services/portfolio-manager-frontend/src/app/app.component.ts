@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { StateService } from './core/services/state.service.js';
 import { HeaderComponent } from './components/header/header.component.js';
 import { MomentumTickerComponent } from './components/momentum-ticker/momentum-ticker.component.js';
@@ -11,10 +12,12 @@ import { BotDecisionComponent } from './components/bot-decision/bot-decision.com
 import { AppConsoleComponent } from './components/app-console/app-console.component.js';
 import { ManualOrderModalComponent } from './components/manual-order-modal/manual-order-modal.component.js';
 import { PortfolioAllocationComponent } from './components/portfolio-allocation/portfolio-allocation.component.js';
+import { SummaryCardsComponent } from './components/summary-cards/summary-cards.component.js';
 
 @Component({
   selector: 'app-root',
   imports: [
+    CommonModule,
     HeaderComponent,
     MomentumTickerComponent,
     StockCatalogComponent,
@@ -25,7 +28,8 @@ import { PortfolioAllocationComponent } from './components/portfolio-allocation/
     BotDecisionComponent,
     AppConsoleComponent,
     ManualOrderModalComponent,
-    PortfolioAllocationComponent
+    PortfolioAllocationComponent,
+    SummaryCardsComponent
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',

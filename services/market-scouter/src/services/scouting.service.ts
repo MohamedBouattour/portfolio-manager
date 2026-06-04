@@ -108,11 +108,29 @@ export class ScoutingService {
             );
 
             // Aggregate results
+            const isStrategyTriggered = (r: StrategyResult): boolean => {
+              if (r.shouldEnter) return true;
+              
+              if (r.strategyName === 'MACD') {
+                return (r.details.histogram ?? 0) > 0;
+              }
+              if (r.strategyName === 'RSI') {
+                const rsi = r.details.rsi ?? 0;
+                const prevRsi = r.details.prevRsi ?? 0;
+                return rsi > 0 && (rsi < 30 || (rsi < 45 && rsi > prevRsi));
+              }
+              if (r.strategyName === 'Volume') {
+                return (r.details.volumeRatio ?? 0) >= 1.5;
+              }
+              
+              return false;
+            };
+
             const triggeredStrategies = strategyResults
-              .filter(r => r.shouldEnter)
+              .filter(r => isStrategyTriggered(r))
               .map(r => r.strategyName);
 
-            const shouldEnter = triggeredStrategies.length > 0;
+            const shouldEnter = strategyResults.some(r => r.shouldEnter);
 
             // Composite confidence: weighted average of all strategy confidences
             // Strategies that triggered get 2x weight

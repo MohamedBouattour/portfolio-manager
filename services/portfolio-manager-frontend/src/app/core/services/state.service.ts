@@ -58,6 +58,12 @@ export class StateService {
   orderStatus = signal<string | null>(null);
   bybitBalance = signal<any>(null);
 
+  // UI Responsive Layout States
+  activeTab = signal<'home' | 'positions' | 'config' | 'scouter' | 'console'>('home');
+  mobileCatalogOpen = signal<boolean>(false);
+  showBotConfigDrawer = signal<boolean>(false);
+  showPositionLogsDrawer = signal<boolean>(false);
+
   // Bybit Wallet Balance derived states
   usdtCoinData = computed(() => {
     const balanceInfo = this.bybitBalance();
@@ -116,6 +122,8 @@ export class StateService {
 
   // States
   isLoading = signal<boolean>(false);
+  isChartLoading = signal<boolean>(false);
+  rightSidebarCollapsed = signal<boolean>(localStorage.getItem('rightSidebarCollapsed') === 'true');
   isEvaluating = signal<boolean>(false);
   error = signal<string | null>(null);
 
@@ -224,6 +232,11 @@ export class StateService {
   });
 
   constructor() {
+    // Save collapsible sidebar state to local storage
+    effect(() => {
+      localStorage.setItem('rightSidebarCollapsed', String(this.rightSidebarCollapsed()));
+    });
+
     // Re-evaluate automatically when index or position parameters change
     effect(() => {
       const idx = this.selectedIndex();
@@ -284,7 +297,7 @@ export class StateService {
           return {
             action: 'HOLD',
             qty: 0,
-            reason: `PnL is +${pnlPct.toFixed(2)}% >= +${profitThreshold}%, but price ($${pos.markPrice.toFixed(2)}) has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price ($${pos.lastExecutionPrice.toFixed(2)}). Skipping Take Profit to prevent loop.`
+            reason: `Profit target met (+${pnlPct.toFixed(2)}%), but waiting for the price to rise further than the last sell price ($${pos.lastExecutionPrice.toFixed(2)}) to avoid repeat trades.`
           };
         }
       }
@@ -293,7 +306,7 @@ export class StateService {
       return {
         action: 'REDUCE',
         qty: parseFloat(qtyToReduce.toFixed(4)),
-        reason: `Take Profit triggered. PnL is +${pnlPct.toFixed(2)}% >= +${profitThreshold}%. Reducing position size by ${reduce}%.`
+        reason: `Profit target reached (+${pnlPct.toFixed(2)}%). Ready to sell ${reduce}% of the position to lock in gains.`
       };
     } else if (pnlPct <= -rebuyThreshold) {
       // Loop prevention check
@@ -304,7 +317,7 @@ export class StateService {
           return {
             action: 'HOLD',
             qty: 0,
-            reason: `PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThreshold}%, but price ($${pos.markPrice.toFixed(2)}) has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price ($${pos.lastExecutionPrice.toFixed(2)}). Skipping rebuy to prevent loop.`
+            reason: `Price dipped to ${pnlPct.toFixed(2)}%, but waiting for it to drop below the last buy price ($${pos.lastExecutionPrice.toFixed(2)}) to avoid repeat trades.`
           };
         }
       }
@@ -313,13 +326,13 @@ export class StateService {
       return {
         action: 'DCA_REBUY',
         qty: parseFloat(qty.toFixed(4)),
-        reason: `DCA Rebuy triggered. PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThreshold}%. Adding position size by ${rebuyQty}%.`
+        reason: `Price dipped to ${pnlPct.toFixed(2)}%. Ready to buy ${rebuyQty}% more to lower the average entry price (DCA).`
       };
     } else {
       return {
         action: 'HOLD',
         qty: 0,
-        reason: `PnL is ${pnlPct.toFixed(2)}% (within [-${rebuyThreshold}%, +${profitThreshold}%]). Holding position.`
+        reason: `Position is performing within normal range (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}% PnL). No actions needed at this time.`
       };
     }
   }
@@ -496,7 +509,7 @@ export class StateService {
     this.klines.set([]);
     this.selectedIndex.set(null);
     this.evaluationResult.set(null);
-    this.isLoading.set(true);
+    this.isChartLoading.set(true);
     this.error.set(null);
 
     const tf = this.timeframe();
@@ -504,7 +517,7 @@ export class StateService {
     this.http.get<Kline[]>(`${this.apiBase}/klines?symbol=${asset}&interval=${interval}`).subscribe({
       next: (data) => {
         this.klines.set(data);
-        this.isLoading.set(false);
+        this.isChartLoading.set(false);
         if (data.length > 0) {
           // Select the last candle by default
           const lastIdx = data.length - 1;
@@ -514,7 +527,7 @@ export class StateService {
       },
       error: (err) => {
         this.error.set(`Failed to load historical charts for ${asset}.`);
-        this.isLoading.set(false);
+        this.isChartLoading.set(false);
       }
     });
   }

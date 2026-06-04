@@ -6,61 +6,77 @@ import { StateService } from '../../core/services/state.service.js';
   selector: 'app-portfolio-allocation',
   imports: [CommonModule],
   template: `
-    <div class="card h-full flex flex-col">
-      <div class="card-header">
-        <div class="flex items-center gap-2.5">
-          <h3 class="text-sm font-semibold text-slate-100">&#x1F4BC; Asset Allocation</h3>
-        </div>
-        <div class="flex bg-slate-900/60 p-0.5 rounded-lg border border-slate-700/40">
-          <button (click)="setChartMode('exposure')" class="bg-transparent border-none outline-none px-3 py-1 text-[11px] font-semibold cursor-pointer rounded-md transition-all" [ngClass]="chartMode() === 'exposure' ? 'bg-slate-700 text-blue-400 shadow-sm' : 'text-slate-400 hover:text-slate-300'">
+    <div class="bg-[#141d24]/90 border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-full">
+      <!-- Header -->
+      <div class="px-5 py-4 border-b border-slate-800/60 flex justify-between items-center bg-[#18232c]/50">
+        <h3 class="text-sm font-extrabold text-white tracking-wide">📊 Asset Allocation</h3>
+        
+        <!-- Toggle button group -->
+        <div class="flex bg-slate-900 border border-slate-800 p-0.5 rounded-lg">
+          <button 
+            (click)="setChartMode('exposure')" 
+            class="px-2.5 py-1 text-xs font-bold cursor-pointer rounded-md transition-all border-none outline-none" 
+            [ngClass]="chartMode() === 'exposure' ? 'bg-[#18232c] text-emerald-400' : 'text-[#8696a0] hover:text-white'"
+          >
             Exposure
           </button>
-          <button (click)="setChartMode('margin')" class="bg-transparent border-none outline-none px-3 py-1 text-[11px] font-semibold cursor-pointer rounded-md transition-all" [ngClass]="chartMode() === 'margin' ? 'bg-slate-700 text-blue-400 shadow-sm' : 'text-slate-400 hover:text-slate-300'">
+          <button 
+            (click)="setChartMode('margin')" 
+            class="px-2.5 py-1 text-xs font-bold cursor-pointer rounded-md transition-all border-none outline-none" 
+            [ngClass]="chartMode() === 'margin' ? 'bg-[#18232c] text-emerald-400' : 'text-[#8696a0] hover:text-white'"
+          >
             Margin
           </button>
         </div>
       </div>
 
-      <div class="p-5 flex-1 flex flex-col justify-center">
-        <div class="flex items-center justify-around gap-5 flex-wrap">
-          <div class="relative flex justify-center items-center" #canvasContainer>
-            <canvas #chartCanvas (mousemove)="onMouseMove($event)" (mouseleave)="onMouseLeave()" class="bg-transparent block"></canvas>
+      <!-- Donut Chart & Legend -->
+      <div class="p-5 flex-1 flex flex-col justify-center bg-[#0d131a]/40">
+        <div class="flex flex-col sm:flex-row items-center justify-around gap-6">
+          
+          <!-- Donut Canvas Container -->
+          <div class="relative flex justify-center items-center shrink-0" #canvasContainer>
+            <canvas #chartCanvas (mousemove)="onMouseMove($event)" (mouseleave)="onMouseLeave()" class="bg-transparent block cursor-pointer"></canvas>
 
+            <!-- Tooltip -->
             @if (tooltip) {
               <div
-                class="absolute pointer-events-none bg-slate-900/95 border border-blue-500/40 shadow-lg backdrop-blur-md px-3.5 py-2.5 rounded-lg z-[100] min-w-[140px] transition-opacity duration-150"
+                class="absolute pointer-events-none bg-[#0f161c]/95 border border-emerald-500/30 shadow-2xl backdrop-blur-md px-3 py-2 rounded-xl z-[100] min-w-[130px] transition-opacity duration-150 text-left animate-fade-in"
                 [style.left.px]="tooltip.x + 10"
                 [style.top.px]="tooltip.y + 10"
               >
-                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">{{ tooltip.symbol }}</div>
-                <div class="text-sm font-bold text-white my-0.5">\${{ tooltip.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}</div>
-                <div class="text-[11px] font-semibold text-emerald-500">{{ tooltip.percentage.toFixed(1) }}%</div>
+                <div class="text-xs font-extrabold uppercase tracking-wider text-slate-400">{{ tooltip.symbol }}</div>
+                <div class="text-xs font-extrabold text-white my-0.5 font-mono">\${{ tooltip.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}</div>
+                <div class="text-xs font-bold text-emerald-400 font-mono">{{ tooltip.percentage.toFixed(1) }}%</div>
               </div>
             }
           </div>
 
-          <div class="flex-1 w-full max-w-[260px] min-w-[180px]">
-            <div class="space-y-2 max-h-[200px] overflow-y-auto pr-1.5">
+          <!-- Legend list -->
+          <div class="flex-1 w-full max-w-[240px]">
+            <div class="space-y-2 max-h-[170px] overflow-y-auto pr-1.5 custom-scrollbar">
               @for (slice of slices(); track slice.symbol; let idx = $index) {
                 <div
-                  class="flex items-center gap-2.5 px-3 py-2 bg-slate-700/25 border border-slate-600/15 rounded-lg cursor-pointer transition-all hover:bg-blue-500/8 hover:border-blue-500/30 hover:translate-x-0.5"
-                  [ngClass]="(hoveredIndex() === idx || legendHoveredIndex() === idx) ? 'bg-blue-500/8 border-blue-500/30' : ''"
+                  (click)="state.selectAsset(slice.isCash ? 'USDT' : slice.symbol)"
                   (mouseenter)="legendHoveredIndex.set(idx)"
                   (mouseleave)="legendHoveredIndex.set(null)"
-                  (click)="state.selectAsset(slice.isCash ? 'USDT' : slice.symbol)"
+                  [ngClass]="(hoveredIndex() === idx || legendHoveredIndex() === idx) ? 'bg-[#18232c]/80 border-slate-700' : 'bg-[#0f161c]/40 border-slate-850'"
+                  class="flex items-center gap-2.5 px-3 py-2 border rounded-xl cursor-pointer transition-all duration-200"
                 >
-                  <div class="w-2 h-2 rounded-full shrink-0" [style.backgroundColor]="slice.color" [style.boxShadow]="'0 0 6px ' + slice.color"></div>
-                  <div class="text-[11px] text-slate-300 flex-1 truncate font-semibold">{{ slice.symbol }}</div>
-                  <div class="flex flex-col items-end gap-0.5">
-                    <span class="text-[11px] font-bold text-white">
+                  <div class="w-2 h-2 rounded-full shrink-0 shadow-lg" [style.backgroundColor]="slice.color" [style.boxShadow]="'0 0 6px ' + slice.color"></div>
+                  <div class="text-xs text-slate-300 flex-1 truncate font-bold">{{ slice.symbol }}</div>
+                  
+                  <div class="flex flex-col items-end gap-0.5 text-right font-mono text-xs">
+                    <span class="font-extrabold text-white">
                       \${{ slice.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}
                     </span>
-                    <span class="text-[11px] font-semibold text-slate-400">{{ slice.percentage.toFixed(1) }}%</span>
+                    <span class="font-bold text-slate-400">{{ slice.percentage.toFixed(1) }}%</span>
                   </div>
                 </div>
               }
             </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -209,7 +225,7 @@ export class PortfolioAllocationComponent {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const size = 200;
+    const size = 160;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = size * dpr;
     canvas.height = size * dpr;
@@ -232,15 +248,15 @@ export class PortfolioAllocationComponent {
       ctx.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI);
       ctx.arc(centerX, centerY, innerRadius, 2 * Math.PI, 0, true);
       ctx.closePath();
-      ctx.fillStyle = 'rgba(71, 85, 105, 0.15)';
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.1)';
       ctx.fill();
 
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#64748b';
-      ctx.font = '600 10px Inter, sans-serif';
+      ctx.fillStyle = '#8696a0';
+      ctx.font = 'bold 11px sans-serif';
       ctx.fillText('NO ASSETS', centerX, centerY - 6);
-      ctx.fillText('$0.00', centerX, centerY + 8);
+      ctx.fillText('$0.00', centerX, centerY + 6);
       return;
     }
 
@@ -254,7 +270,7 @@ export class PortfolioAllocationComponent {
       const isHovered = (i === this.hoveredIndex() || i === this.legendHoveredIndex());
 
       const middleAngle = startAngle + angleRange / 2;
-      const shiftDist = isHovered ? 6 : 0;
+      const shiftDist = isHovered ? 4 : 0;
       const shiftX = Math.cos(middleAngle) * shiftDist;
       const shiftY = Math.sin(middleAngle) * shiftDist;
 
@@ -266,7 +282,7 @@ export class PortfolioAllocationComponent {
       ctx.fillStyle = slice.color;
       ctx.fill();
 
-      ctx.strokeStyle = '#0f172a';
+      ctx.strokeStyle = '#0d131a';
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
@@ -277,12 +293,12 @@ export class PortfolioAllocationComponent {
     ctx.textBaseline = 'middle';
 
     const mode = this.chartMode();
-    ctx.fillStyle = '#64748b';
-    ctx.font = '600 9px Inter, sans-serif';
+    ctx.fillStyle = '#8696a0';
+    ctx.font = 'bold 10px sans-serif';
     ctx.fillText(mode === 'exposure' ? 'EXPOSURE' : 'COLLATERAL', centerX, centerY - 10);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = '700 13px Inter, sans-serif';
+    ctx.font = 'extrabold 12px monospace';
 
     const totalString = '$' + total.toLocaleString(undefined, {
       minimumFractionDigits: 2,

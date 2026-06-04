@@ -1,4 +1,4 @@
 export const environment = {
   production: false,
-  apiBase: 'http://localhost:3000/api'
+  apiBase: 'https://79.137.14.75/portfolio-manager/api'
 };
