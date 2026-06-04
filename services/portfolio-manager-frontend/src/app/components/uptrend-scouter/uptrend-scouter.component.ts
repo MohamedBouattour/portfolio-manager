@@ -68,7 +68,7 @@ import { StateService } from '../../core/services/state.service.js';
             <tbody>
               @for (item of state.sortedScoutingResults(); track item.symbol) {
                 <tr
-                  [ngClass]="item.shouldEnter ? 'bg-emerald-500/[0.03]' : (item.confidence ?? 0) >= 40 ? 'bg-amber-500/[0.02]' : ''"
+                  [ngClass]="state.hasPosition(item.symbol) ? 'bg-sky-500/[0.03]' : item.shouldEnter ? 'bg-emerald-500/[0.03]' : (item.confidence ?? 0) >= 40 ? 'bg-amber-500/[0.02]' : ''"
                   (click)="state.selectAsset(item.symbol)"
                   class="cursor-pointer transition-colors border-b border-slate-850/60 hover:bg-slate-800/10"
                 >
@@ -85,7 +85,9 @@ import { StateService } from '../../core/services/state.service.js';
                       </div>
                       <div class="flex flex-col gap-0.5">
                         <span class="font-bold text-white text-xs">{{ item.symbol }}</span>
-                        @if (item.shouldEnter) {
+                        @if (state.hasPosition(item.symbol)) {
+                          <span class="text-[10px] font-extrabold text-[#38bdf8] tracking-wider uppercase">💼 HELD</span>
+                        } @else if (item.shouldEnter) {
                           <span class="text-xs font-extrabold text-[#10b981] tracking-wider uppercase">🚀 ENTRY</span>
                         }
                       </div>

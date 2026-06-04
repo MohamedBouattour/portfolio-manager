@@ -546,6 +546,10 @@ export class StateService {
     return res ? res.shouldEnter : false;
   }
 
+  hasPosition(symbol: string): boolean {
+    return this.openPositions().some(p => p.symbol === symbol);
+  }
+
   getUptrendAssets(): any[] {
     return this.scoutingResults().filter(r => r.shouldEnter);
   }
