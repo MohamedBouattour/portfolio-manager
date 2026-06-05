@@ -188,7 +188,12 @@ export class StateService {
 
     // Check entry signal
     if (evalResult.strategySignal.shouldEnter) {
-      const targetNotional = this.botBalance() * (this.maxAllocPct() / 100) * this.botLeverage();
+      const targetMargin = Math.min(
+        this.botBalance() * (this.maxAllocPct() / 100),
+        this.botBalance() * 0.05,
+        50
+      );
+      const targetNotional = targetMargin * this.botLeverage();
       const rawQty = targetNotional / lastPrice;
       const qty = parseFloat(rawQty.toFixed(4));
       return {

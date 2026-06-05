@@ -359,6 +359,32 @@ export class HistoricalChartComponent {
     drawMA(sma25, '#0ea5e9');     // SMA 25: blue
     drawMA(sma99, '#ec4899');     // SMA 99: pink/red
 
+    // Draw SMA Legend in top-right of price pane
+    const legendX = width - paddingRight - 8;
+    const legendY = paddingTop + 10;
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'right';
+
+    const smaLegendItems = [
+      { label: 'SMA 7', color: '#fbbf24' },
+      { label: 'SMA 25', color: '#0ea5e9' },
+      { label: 'SMA 99', color: '#ec4899' },
+    ];
+    for (let li = 0; li < smaLegendItems.length; li++) {
+      const item = smaLegendItems[li];
+      const ly = legendY + li * 14;
+      // Draw colored line swatch
+      ctx.strokeStyle = item.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(legendX - ctx.measureText(item.label).width - 12, ly - 3);
+      ctx.lineTo(legendX - ctx.measureText(item.label).width - 2, ly - 3);
+      ctx.stroke();
+      // Draw label
+      ctx.fillStyle = item.color;
+      ctx.fillText(item.label, legendX, ly);
+    }
+
     // 3. Draw Candlestick bars
     for (let i = 0; i < data.length; i++) {
       const k = data[i];
@@ -464,12 +490,44 @@ export class HistoricalChartComponent {
     }
     ctx.stroke();
 
-    // MACD pane tags
-    ctx.fillStyle = '#8696a0';
+    // MACD pane legend and tags
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText('MACD', paddingLeft - 8, macdTop + 10);
+    ctx.fillStyle = '#8696a0';
     ctx.fillText('0.00', paddingLeft - 8, getMacdY(0) + 3);
+
+    // MACD pane legend in top-left area
+    ctx.textAlign = 'left';
+    const macdLegendX = paddingLeft + 8;
+    const macdLegendY = macdTop + 4;
+
+    // MACD line label
+    ctx.strokeStyle = '#0ea5e9';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(macdLegendX, macdLegendY - 3);
+    ctx.lineTo(macdLegendX + 10, macdLegendY - 3);
+    ctx.stroke();
+    ctx.fillStyle = '#0ea5e9';
+    ctx.fillText('MACD', macdLegendX + 14, macdLegendY);
+
+    // Signal line label
+    const sigLabelX = macdLegendX + 56;
+    ctx.strokeStyle = '#f97316';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(sigLabelX, macdLegendY - 3);
+    ctx.lineTo(sigLabelX + 10, macdLegendY - 3);
+    ctx.stroke();
+    ctx.fillStyle = '#f97316';
+    ctx.fillText('Signal', sigLabelX + 14, macdLegendY);
+
+    // Histogram label
+    const histLabelX = sigLabelX + 62;
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.45)';
+    ctx.fillRect(histLabelX, macdLegendY - 7, 8, 8);
+    ctx.fillStyle = '#8696a0';
+    ctx.fillText('Hist', histLabelX + 12, macdLegendY);
 
     // 5. Draw active timeline selected candle vertical line
     if (activeIdx !== null && activeIdx >= 0 && activeIdx < data.length) {

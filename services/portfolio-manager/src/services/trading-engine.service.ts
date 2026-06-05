@@ -269,7 +269,12 @@ export class TradingEngineService {
       log.info(`[Manual Mode] Entry signal triggered for ${symbol}. Skipping automatic order execution.`);
       return false;
     }
-    const targetNotional = config.balance * (config.maxAllocPct / 100) * config.leverage;
+    const targetMargin = Math.min(
+      config.balance * (config.maxAllocPct / 100),
+      config.balance * 0.05,
+      50
+    );
+    const targetNotional = targetMargin * config.leverage;
     const rawQty = targetNotional / lastPrice;
     const qty = roundQty(rawQty, spec);
 

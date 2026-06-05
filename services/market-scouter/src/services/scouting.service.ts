@@ -107,27 +107,11 @@ export class ScoutingService {
               strategy.evaluate(closes, volumes)
             );
 
-            // Aggregate results
-            const isStrategyTriggered = (r: StrategyResult): boolean => {
-              if (r.shouldEnter) return true;
-              
-              if (r.strategyName === 'MACD') {
-                return (r.details.histogram ?? 0) > 0;
-              }
-              if (r.strategyName === 'RSI') {
-                const rsi = r.details.rsi ?? 0;
-                const prevRsi = r.details.prevRsi ?? 0;
-                return rsi > 0 && (rsi < 30 || (rsi < 45 && rsi > prevRsi));
-              }
-              if (r.strategyName === 'Volume') {
-                return (r.details.volumeRatio ?? 0) >= 1.5;
-              }
-              
-              return false;
-            };
-
+            // Aggregate results — use each strategy's own shouldEnter verdict directly.
+            // No overrides: MACD requires bullish crossover under zero, RSI requires
+            // crossing above 30 from below, Volume requires spike ≥2x with bullish candle.
             const triggeredStrategies = strategyResults
-              .filter(r => isStrategyTriggered(r))
+              .filter(r => r.shouldEnter)
               .map(r => r.strategyName);
 
             const shouldEnter = triggeredStrategies.length >= 2;
