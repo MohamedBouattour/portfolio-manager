@@ -308,18 +308,16 @@ export class PositionsTableComponent {
     const profitThreshold = this.state.profitThresholdPct();
     const leverage = pos.leverage || 3;
     
-    // 1. Static PnL-based thresholds
+    // 1. Static PnL-based thresholds (Entry Price / avgPrice based)
     let dcaPnL = 0;
     let tpPnL = 0;
     
     if (pos.side === 'Buy') {
-      dcaPnL = pos.avgPrice / (1 + rebuyThreshold / (leverage * 100));
-      const tpDivisor = 1 - profitThreshold / (leverage * 100);
-      tpPnL = tpDivisor > 0 ? pos.avgPrice / tpDivisor : pos.avgPrice * 2;
+      dcaPnL = pos.avgPrice * (1 - rebuyThreshold / (leverage * 100));
+      tpPnL = pos.avgPrice * (1 + profitThreshold / (leverage * 100));
     } else {
-      const dcaDivisor = 1 - rebuyThreshold / (leverage * 100);
-      dcaPnL = dcaDivisor > 0 ? pos.avgPrice / dcaDivisor : pos.avgPrice * 2;
-      tpPnL = pos.avgPrice / (1 + profitThreshold / (leverage * 100));
+      dcaPnL = pos.avgPrice * (1 + rebuyThreshold / (leverage * 100));
+      tpPnL = pos.avgPrice * (1 - profitThreshold / (leverage * 100));
     }
 
     // 2. Loop prevention constraints

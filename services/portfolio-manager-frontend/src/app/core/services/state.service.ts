@@ -304,18 +304,36 @@ export class StateService {
     const rebuyThreshold = this.rebuyThresholdPct();
     const reduce = this.reducePct();
     const rebuyQty = this.rebuyQtyPct();
+    const isLong = pos.side === 'Buy';
 
     if (pnlPct >= profitThreshold) {
-      // Loop prevention check
-      if (pos.lastExecutionPrice && pos.lastExecutionSide === 'Sell') {
-        const priceRiseThreshold = profitThreshold / pos.leverage;
-        const requiredPrice = pos.lastExecutionPrice * (1 + priceRiseThreshold / 100);
-        if (pos.markPrice < requiredPrice) {
-          return {
-            action: 'HOLD',
-            qty: 0,
-            reason: `Profit target met (+${pnlPct.toFixed(2)}%), but waiting for the price to rise further than the last sell price ($${pos.lastExecutionPrice.toFixed(2)}) to avoid repeat trades.`
-          };
+      const effectiveLastPrice = pos.lastExecutionPrice ?? pos.avgPrice;
+      const effectiveLastSide = pos.lastExecutionSide ?? (isLong ? 'Buy' : 'Sell');
+
+      if (isLong) {
+        if (effectiveLastPrice && effectiveLastSide === 'Sell') {
+          const priceRiseThreshold = profitThreshold / pos.leverage;
+          const requiredPrice = effectiveLastPrice * (1 + priceRiseThreshold / 100);
+          if (pos.markPrice < requiredPrice) {
+            return {
+              action: 'HOLD',
+              qty: 0,
+              reason: `Profit target met (+${pnlPct.toFixed(2)}%), but waiting for the price to rise further than the last sell price ($${effectiveLastPrice.toFixed(2)}) to avoid repeat trades.`
+            };
+          }
+        }
+      } else {
+        // Short TP
+        if (effectiveLastPrice && effectiveLastSide === 'Buy') {
+          const priceDropThreshold = profitThreshold / pos.leverage;
+          const requiredPrice = effectiveLastPrice * (1 - priceDropThreshold / 100);
+          if (pos.markPrice > requiredPrice) {
+            return {
+              action: 'HOLD',
+              qty: 0,
+              reason: `Profit target met (+${pnlPct.toFixed(2)}%), but waiting for the price to drop further than the last buy price ($${effectiveLastPrice.toFixed(2)}) to avoid repeat trades.`
+            };
+          }
         }
       }
 
@@ -326,16 +344,33 @@ export class StateService {
         reason: `Profit target reached (+${pnlPct.toFixed(2)}%). Ready to sell ${reduce}% of the position to lock in gains.`
       };
     } else if (pnlPct <= -rebuyThreshold) {
-      // Loop prevention check
-      if (pos.lastExecutionPrice && pos.lastExecutionSide === 'Buy') {
-        const priceDropThreshold = rebuyThreshold / pos.leverage;
-        const requiredPrice = pos.lastExecutionPrice * (1 - priceDropThreshold / 100);
-        if (pos.markPrice > requiredPrice) {
-          return {
-            action: 'HOLD',
-            qty: 0,
-            reason: `Price dipped to ${pnlPct.toFixed(2)}%, but waiting for it to drop below the last buy price ($${pos.lastExecutionPrice.toFixed(2)}) to avoid repeat trades.`
-          };
+      const effectiveLastPrice = pos.lastExecutionPrice ?? pos.avgPrice;
+      const effectiveSide = pos.lastExecutionSide ?? (isLong ? 'Buy' : 'Sell');
+
+      if (isLong) {
+        if (effectiveLastPrice && effectiveSide === 'Buy') {
+          const priceDropThreshold = rebuyThreshold / pos.leverage;
+          const requiredPrice = effectiveLastPrice * (1 - priceDropThreshold / 100);
+          if (pos.markPrice > requiredPrice) {
+            return {
+              action: 'HOLD',
+              qty: 0,
+              reason: `Price dipped to ${pnlPct.toFixed(2)}%, but waiting for it to drop below the last buy price ($${effectiveLastPrice.toFixed(2)}) to avoid repeat trades.`
+            };
+          }
+        }
+      } else {
+        // Short DCA
+        if (effectiveLastPrice && effectiveSide === 'Sell') {
+          const priceRiseThreshold = rebuyThreshold / pos.leverage;
+          const requiredPrice = effectiveLastPrice * (1 + priceRiseThreshold / 100);
+          if (pos.markPrice < requiredPrice) {
+            return {
+              action: 'HOLD',
+              qty: 0,
+              reason: `Price dipped to ${pnlPct.toFixed(2)}%, but waiting for it to rise above the last sell price ($${effectiveLastPrice.toFixed(2)}) to avoid repeat trades.`
+            };
+          }
         }
       }
 

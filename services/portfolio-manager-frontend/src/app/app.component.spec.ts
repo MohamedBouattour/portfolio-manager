@@ -32,6 +32,7 @@ describe('AppComponent and StateService', () => {
     const fixture = TestBed.createComponent(AppComponent);
     component = fixture.componentInstance;
     stateService = TestBed.inject(StateService);
+    (stateService as any).apiBase = 'http://localhost:3000/api';
     httpMock = TestBed.inject(HttpTestingController);
     
     // Trigger OnInit which calls state.initialize()

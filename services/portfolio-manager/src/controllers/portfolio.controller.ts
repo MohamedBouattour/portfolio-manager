@@ -70,7 +70,7 @@ export class PortfolioController {
       const summaryMap = new Map(opsSummary.map(s => [s.symbol, s]));
 
       const enriched = positions.map((pos) => {
-        const initialMargin = pos.positionValue / pos.leverage;
+        const initialMargin = (pos.size * pos.avgPrice) / pos.leverage;
         const pnlPct = initialMargin > 0 ? (pos.unrealisedPnl / initialMargin) * 100 : 0;
 
         const storedExec = this.executionStore.get(pos.symbol);
@@ -81,20 +81,38 @@ export class PortfolioController {
         let qty = 0;
         let reason = `PnL is ${pnlPct.toFixed(2)}% (within [-${rebuyThresholdPct}%, +${profitThresholdPct}%]). Holding position.`;
 
+        const isLong = pos.side === 'Buy';
+
         if (pnlPct >= profitThresholdPct) {
           let skipped = false;
-          // Use reliable fallback for loop prevention
           const effectiveLastPrice = lastExecPrice ?? pos.avgPrice;
-          if (effectiveLastPrice && lastExecSide === 'Sell') {
-            const priceRiseThreshold = profitThresholdPct / pos.leverage;
-            const requiredPrice = effectiveLastPrice * (1 + priceRiseThreshold / 100);
-            if (pos.markPrice < requiredPrice) {
-              action = 'HOLD';
-              qty = 0;
-              reason = `PnL is +${pnlPct.toFixed(2)}% >= +${profitThresholdPct}%, but price ($${pos.markPrice.toFixed(2)}) has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price ($${effectiveLastPrice.toFixed(2)}). Skipping TP to prevent loop.`;
-              skipped = true;
+          const effectiveLastSide = lastExecSide ?? (isLong ? 'Buy' : 'Sell');
+
+          if (isLong) {
+            if (effectiveLastPrice && effectiveLastSide === 'Sell') {
+              const priceRiseThreshold = profitThresholdPct / pos.leverage;
+              const requiredPrice = effectiveLastPrice * (1 + priceRiseThreshold / 100);
+              if (pos.markPrice < requiredPrice) {
+                action = 'HOLD';
+                qty = 0;
+                reason = `PnL is +${pnlPct.toFixed(2)}% >= +${profitThresholdPct}%, but price ($${pos.markPrice.toFixed(2)}) has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price ($${effectiveLastPrice.toFixed(2)}). Skipping TP to prevent loop.`;
+                skipped = true;
+              }
+            }
+          } else {
+            // Short TP
+            if (effectiveLastPrice && effectiveLastSide === 'Buy') {
+              const priceDropThreshold = profitThresholdPct / pos.leverage;
+              const requiredPrice = effectiveLastPrice * (1 - priceDropThreshold / 100);
+              if (pos.markPrice > requiredPrice) {
+                action = 'HOLD';
+                qty = 0;
+                reason = `PnL is +${pnlPct.toFixed(2)}% >= +${profitThresholdPct}%, but price ($${pos.markPrice.toFixed(2)}) has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price ($${effectiveLastPrice.toFixed(2)}). Skipping TP to prevent loop.`;
+                skipped = true;
+              }
             }
           }
+
           if (!skipped) {
             const qtyToReduce = pos.size * (reducePct / 100);
             action = 'REDUCE';
@@ -103,17 +121,31 @@ export class PortfolioController {
           }
         } else if (pnlPct <= -rebuyThresholdPct) {
           let skipped = false;
-          // Use reliable fallback for loop prevention (KEY FIX)
           const effectiveLastPrice = lastExecPrice ?? pos.avgPrice;
-          const effectiveLastSide = lastExecSide ?? 'Buy'; // Assume Buy if position exists
-          if (effectiveLastPrice && effectiveLastSide === 'Buy') {
-            const priceDropThreshold = rebuyThresholdPct / pos.leverage;
-            const requiredPrice = effectiveLastPrice * (1 - priceDropThreshold / 100);
-            if (pos.markPrice > requiredPrice) {
-              action = 'HOLD';
-              qty = 0;
-              reason = `PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThresholdPct}%, but price ($${pos.markPrice.toFixed(2)}) has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price ($${effectiveLastPrice.toFixed(2)}). Skipping rebuy to prevent loop.`;
-              skipped = true;
+          const effectiveLastSide = lastExecSide ?? (isLong ? 'Buy' : 'Sell');
+
+          if (isLong) {
+            if (effectiveLastPrice && effectiveLastSide === 'Buy') {
+              const priceDropThreshold = rebuyThresholdPct / pos.leverage;
+              const requiredPrice = effectiveLastPrice * (1 - priceDropThreshold / 100);
+              if (pos.markPrice > requiredPrice) {
+                action = 'HOLD';
+                qty = 0;
+                reason = `PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThresholdPct}%, but price ($${pos.markPrice.toFixed(2)}) has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price ($${effectiveLastPrice.toFixed(2)}). Skipping rebuy to prevent loop.`;
+                skipped = true;
+              }
+            }
+          } else {
+            // Short DCA
+            if (effectiveLastPrice && effectiveLastSide === 'Sell') {
+              const priceRiseThreshold = rebuyThresholdPct / pos.leverage;
+              const requiredPrice = effectiveLastPrice * (1 + priceRiseThreshold / 100);
+              if (pos.markPrice < requiredPrice) {
+                action = 'HOLD';
+                qty = 0;
+                reason = `PnL is ${pnlPct.toFixed(2)}% <= -${rebuyThresholdPct}%, but price ($${pos.markPrice.toFixed(2)}) has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price ($${effectiveLastPrice.toFixed(2)}). Skipping rebuy to prevent loop.`;
+                skipped = true;
+              }
             }
           }
 

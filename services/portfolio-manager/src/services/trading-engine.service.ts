@@ -193,12 +193,27 @@ export class TradingEngineService {
       this.executionStore.get(pos.symbol)?.lastExecutionSide
       ?? pos.lastExecutionSide;
 
-    if (lastSellPrice && lastSellSide === 'Sell') {
-      const priceRiseThreshold = config.profitThresholdPct / pos.leverage;
-      const requiredPrice = lastSellPrice * (1 + priceRiseThreshold / 100);
-      if (pos.markPrice < requiredPrice) {
-        const reason = `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% >= +${config.profitThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price $${lastSellPrice.toFixed(2)}. Skipping Take Profit.`;
-        return { skip: true, reason };
+    const isLong = pos.side === 'Buy';
+
+    if (isLong) {
+      if (lastSellPrice && lastSellSide === 'Sell') {
+        const priceRiseThreshold = config.profitThresholdPct / pos.leverage;
+        const requiredPrice = lastSellPrice * (1 + priceRiseThreshold / 100);
+        if (pos.markPrice < requiredPrice) {
+          const reason = `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% >= +${config.profitThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price $${lastSellPrice.toFixed(2)}. Skipping Take Profit.`;
+          return { skip: true, reason };
+        }
+      }
+    } else {
+      // Short TP
+      const effectiveLastSide = lastSellSide ?? 'Buy'; // Default to Buy (opposite of Short)
+      if (lastSellPrice && effectiveLastSide === 'Buy') {
+        const priceDropThreshold = config.profitThresholdPct / pos.leverage;
+        const requiredPrice = lastSellPrice * (1 - priceDropThreshold / 100);
+        if (pos.markPrice > requiredPrice) {
+          const reason = `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% >= +${config.profitThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price $${lastSellPrice.toFixed(2)}. Skipping Take Profit.`;
+          return { skip: true, reason };
+        }
       }
     }
 
@@ -209,7 +224,7 @@ export class TradingEngineService {
    * Determines whether a DCA Rebuy should be skipped to prevent
    * repeated buy orders at the same price level.
    *
-   * KEY FIX: Falls back to pos.avgPrice and assumes 'Buy' side when
+   * KEY FIX: Falls back to pos.avgPrice and assumes 'Buy'/'Sell' side when
    * no execution history exists — prevents the buy loop bug where
    * missing data bypassed all loop prevention.
    */
@@ -225,15 +240,30 @@ export class TradingEngineService {
 
     const lastBuySide =
       this.executionStore.get(pos.symbol)?.lastExecutionSide
-      ?? pos.lastExecutionSide
-      ?? 'Buy'; // FIX: assume Buy if position exists but no execution history
+      ?? pos.lastExecutionSide;
 
-    if (lastBuyPrice && lastBuySide === 'Buy') {
-      const priceDropThreshold = config.rebuyThresholdPct / pos.leverage;
-      const requiredPrice = lastBuyPrice * (1 - priceDropThreshold / 100);
-      if (pos.markPrice > requiredPrice) {
-        const reason = `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% <= -${config.rebuyThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price $${lastBuyPrice.toFixed(2)}. Skipping DCA Rebuy.`;
-        return { skip: true, reason };
+    const isLong = pos.side === 'Buy';
+
+    if (isLong) {
+      const effectiveLastSide = lastBuySide ?? 'Buy';
+      if (lastBuyPrice && effectiveLastSide === 'Buy') {
+        const priceDropThreshold = config.rebuyThresholdPct / pos.leverage;
+        const requiredPrice = lastBuyPrice * (1 - priceDropThreshold / 100);
+        if (pos.markPrice > requiredPrice) {
+          const reason = `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% <= -${config.rebuyThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price $${lastBuyPrice.toFixed(2)}. Skipping DCA Rebuy.`;
+          return { skip: true, reason };
+        }
+      }
+    } else {
+      // Short DCA
+      const effectiveLastSide = lastBuySide ?? 'Sell';
+      if (lastBuyPrice && effectiveLastSide === 'Sell') {
+        const priceRiseThreshold = config.rebuyThresholdPct / pos.leverage;
+        const requiredPrice = lastBuyPrice * (1 + priceRiseThreshold / 100);
+        if (pos.markPrice < requiredPrice) {
+          const reason = `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% <= -${config.rebuyThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price $${lastBuyPrice.toFixed(2)}. Skipping DCA Rebuy.`;
+          return { skip: true, reason };
+        }
       }
     }
 
@@ -412,7 +442,7 @@ export class TradingEngineService {
   }
 
   private calculatePnLPct(pos: Position): number {
-    const initialMargin = pos.positionValue / pos.leverage;
+    const initialMargin = (pos.size * pos.avgPrice) / pos.leverage;
     if (initialMargin === 0) return 0;
     return (pos.unrealisedPnl / initialMargin) * 100;
   }
