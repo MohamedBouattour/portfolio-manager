@@ -4,6 +4,7 @@ dist/
 *.log
 coverage/
 execution-store.json
+pgdata/
 
 .env*
 .flaskenv*

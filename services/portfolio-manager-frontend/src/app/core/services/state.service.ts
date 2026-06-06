@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed, effect } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Kline, StrategySignal, PositionDecision, EvaluationResult, Position } from '../../types.js';
+import { Kline, StrategySignal, PositionDecision, EvaluationResult, Position, OperationRecord } from '../../types.js';
 import { environment } from '../../../environments/environment.dev.js';
 
 @Injectable({
@@ -32,6 +32,15 @@ export class StateService {
   timeframe = signal<string>('1h');
   scoutingSortField = signal<string>('confidence');
   scoutingSortDir = signal<'asc' | 'desc'>('desc');
+
+  // Operations History
+  operations = signal<OperationRecord[]>([]);
+  operationsSummary = signal<any[]>([]);
+  selectedSymbolOperations = computed(() => {
+    const asset = this.selectedAsset();
+    if (!asset) return [];
+    return this.operations().filter(op => op.symbol === asset);
+  });
   selectedAssetScouting = computed(() => {
     const asset = this.selectedAsset();
     if (!asset) return null;
@@ -59,7 +68,6 @@ export class StateService {
   bybitBalance = signal<any>(null);
 
   // UI Responsive Layout States
-  activeTab = signal<'home' | 'positions' | 'config' | 'scouter' | 'console'>('home');
   mobileCatalogOpen = signal<boolean>(false);
   showBotConfigDrawer = signal<boolean>(false);
   showPositionLogsDrawer = signal<boolean>(false);
@@ -272,11 +280,15 @@ export class StateService {
     this.fetchConfig();
     this.fetchOpenPositions();
     this.fetchWalletBalance();
+    this.fetchOperations();
+    this.fetchOperationsSummary();
     setInterval(() => {
       this.fetchScoutingStatus();
       this.fetchLatestLog();
       this.fetchOpenPositions();
       this.fetchWalletBalance();
+      this.fetchOperations();
+      this.fetchOperationsSummary();
     }, 30000);
   }
 
@@ -445,6 +457,9 @@ export class StateService {
         this.orderExecuting.set(false);
         this.orderStatus.set('success');
         this.fetchOpenPositions();
+        this.fetchWalletBalance();
+        this.fetchOperations();
+        this.fetchOperationsSummary();
         this.closeOrderModal();
         setTimeout(() => this.orderStatus.set(null), 5000);
       },
@@ -477,6 +492,47 @@ export class StateService {
         console.error('Failed to load scouting status', err);
       }
     });
+  }
+
+  fetchOperations() {
+    this.http.get<OperationRecord[]>(`${this.apiBase}/operations?limit=200`).subscribe({
+      next: (data) => {
+        this.operations.set(data);
+      },
+      error: (err) => {
+        console.error('Failed to load operations', err);
+      }
+    });
+  }
+
+  fetchOperationsSummary() {
+    this.http.get<any[]>(`${this.apiBase}/operations/summary`).subscribe({
+      next: (data) => {
+        this.operationsSummary.set(data);
+      },
+      error: (err) => {
+        console.error('Failed to load operations summary', err);
+      }
+    });
+  }
+
+  syncOperations() {
+    this.http.post<any>(`${this.apiBase}/operations/sync`, {}).subscribe({
+      next: (res) => {
+        console.log('[StateService] Operations successfully synced with Bybit:', res);
+        this.fetchOpenPositions();
+        this.fetchWalletBalance();
+        this.fetchOperations();
+        this.fetchOperationsSummary();
+      },
+      error: (err) => {
+        console.error('Failed to sync operations with Bybit', err);
+      }
+    });
+  }
+
+  getSymbolOpsSummary(symbol: string): any {
+    return this.operationsSummary().find(s => s.symbol === symbol) || null;
   }
 
   fetchLatestLog() {

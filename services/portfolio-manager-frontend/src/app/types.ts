@@ -8,4 +8,5 @@ export type {
   PositionDecision,
   EvaluationResult,
   BotConfig,
+  OperationRecord,
 } from '@portfolio/contracts';

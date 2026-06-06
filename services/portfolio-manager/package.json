@@ -17,12 +17,14 @@
     "@portfolio/contracts": "*",
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
+    "pg": "^8.21.0",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@nestjs/testing": "^10.4.22",
     "@types/express": "^5.0.0",
     "@types/node": "^22.12.0",
+    "@types/pg": "^8.20.0",
     "tsx": "^4.19.4",
     "typescript": "^5.7.3",
     "vitest": "^4.1.7"

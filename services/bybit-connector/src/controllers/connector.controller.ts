@@ -73,6 +73,23 @@ export class ConnectorController {
     }
   }
 
+  @Get('executions')
+  async getExecutions(
+    @Query('symbol') symbol: string,
+    @Query('limit') limit?: string
+  ) {
+    if (!symbol) {
+      throw new HttpException('Symbol parameter is required', HttpStatus.BAD_REQUEST);
+    }
+    const limitNum = parseInt(limit || '50', 10);
+    try {
+      const result = await this.bybitRestService.getExecutions(symbol, limitNum);
+      return result;
+    } catch (err: any) {
+      throw new HttpException(err.message || 'Error fetching executions', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   @Post('order')
   async postOrder(
     @Body()

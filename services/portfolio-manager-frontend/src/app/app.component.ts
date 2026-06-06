@@ -1,7 +1,6 @@
 import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { StateService } from './core/services/state.service.js';
-import { HeaderComponent } from './components/header/header.component.js';
 import { MomentumTickerComponent } from './components/momentum-ticker/momentum-ticker.component.js';
 import { StockCatalogComponent } from './components/stock-catalog/stock-catalog.component.js';
 import { HistoricalChartComponent } from './components/historical-chart/historical-chart.component.js';
@@ -13,12 +12,12 @@ import { AppConsoleComponent } from './components/app-console/app-console.compon
 import { ManualOrderModalComponent } from './components/manual-order-modal/manual-order-modal.component.js';
 import { PortfolioAllocationComponent } from './components/portfolio-allocation/portfolio-allocation.component.js';
 import { SummaryCardsComponent } from './components/summary-cards/summary-cards.component.js';
+import { OperationsHistoryComponent } from './components/operations-history/operations-history.component.js';
 
 @Component({
   selector: 'app-root',
   imports: [
     CommonModule,
-    HeaderComponent,
     MomentumTickerComponent,
     StockCatalogComponent,
     HistoricalChartComponent,
@@ -29,7 +28,8 @@ import { SummaryCardsComponent } from './components/summary-cards/summary-cards.
     AppConsoleComponent,
     ManualOrderModalComponent,
     PortfolioAllocationComponent,
-    SummaryCardsComponent
+    SummaryCardsComponent,
+    OperationsHistoryComponent
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',

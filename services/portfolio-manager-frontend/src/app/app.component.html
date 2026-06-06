@@ -19,6 +19,7 @@
 
     <!-- Additional Detail Panels -->
     <app-positions-table class="block w-full mt-2"></app-positions-table>
+    <app-operations-history class="block w-full mt-2"></app-operations-history>
     <app-uptrend-scouter class="block w-full mt-2"></app-uptrend-scouter>
     <app-app-console class="block w-full mt-2"></app-app-console>
   </div>
@@ -64,7 +65,7 @@
     <!-- Right Side shortcuts -->
     <div class="flex items-center gap-4 text-slate-400">
       <button (click)="state.showPositionLogsDrawer.set(false); state.showBotConfigDrawer.set(false)" class="text-slate-400 hover:text-white cursor-pointer text-sm" title="Home">🏠</button>
-      <button (click)="state.fetchOpenPositions(); state.fetchWalletBalance()" class="text-slate-400 hover:text-white cursor-pointer text-sm" title="Refresh">🔄</button>
+      <button (click)="state.syncOperations(); state.fetchWalletBalance()" class="text-slate-400 hover:text-white cursor-pointer text-sm" title="Refresh">🔄</button>
       <button (click)="state.showBotConfigDrawer.set(true)" class="text-slate-400 hover:text-white cursor-pointer text-sm" title="Settings">⚙️</button>
     </div>
   </div>
@@ -89,6 +90,7 @@
         </div>
         <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0d131a]/40 custom-scrollbar pb-10">
           <app-positions-table></app-positions-table>
+          <app-operations-history></app-operations-history>
           <app-app-console></app-app-console>
         </div>
       </div>
@@ -98,64 +100,76 @@
 
 
 <!-- ========================================== -->
-<!-- 3. MOBILE LAYOUT (sm and below)          -->
+<!-- 3. MOBILE LAYOUT (md and below)          -->
 <!-- ========================================== -->
 <div class="flex md:hidden flex-col min-h-screen bg-[#0b0f14] text-slate-100 font-sans pb-20">
-  <app-header></app-header>
-  
-  <div class="flex-1 p-3 overflow-y-auto">
-    @if (state.activeTab() === 'home') {
-      <div class="space-y-4">
-        <app-summary-cards></app-summary-cards>
-        <app-historical-chart></app-historical-chart>
-        <app-momentum-ticker></app-momentum-ticker>
-        <app-bot-decision></app-bot-decision>
-      </div>
-    } @else if (state.activeTab() === 'positions') {
-      <div class="space-y-4">
-        <app-positions-table></app-positions-table>
-        <app-portfolio-allocation></app-portfolio-allocation>
-      </div>
-    } @else if (state.activeTab() === 'scouter') {
-      <app-uptrend-scouter></app-uptrend-scouter>
-    } @else if (state.activeTab() === 'console') {
-      <app-app-console></app-app-console>
-    } @else if (state.activeTab() === 'config') {
-      <app-simulation-settings></app-simulation-settings>
-    }
+
+  <!-- Scrollable main content - same layout as desktop center column -->
+  <div class="flex-1 p-3 space-y-4 overflow-y-auto max-h-[calc(100vh-80px)]">
+    <app-summary-cards></app-summary-cards>
+    <app-momentum-ticker></app-momentum-ticker>
+    <app-historical-chart></app-historical-chart>
+
+    <div class="grid grid-cols-1 gap-4">
+      <app-bot-decision></app-bot-decision>
+      <app-portfolio-allocation></app-portfolio-allocation>
+    </div>
+
+    <app-positions-table></app-positions-table>
+    <app-operations-history></app-operations-history>
+    <app-uptrend-scouter></app-uptrend-scouter>
+    <app-app-console></app-app-console>
   </div>
 
-  <!-- Mobile Sticky Bottom Navigation -->
+  <!-- Mobile Sticky Bottom Navigation Bar -->
   <div class="fixed bottom-0 left-0 right-0 h-16 bg-[#141d24]/90 border-t border-slate-800/80 backdrop-blur-md flex items-center justify-between px-4 z-30">
-    <!-- Stock Catalog drawer buttons -->
-    <div class="flex items-center gap-1.5">
-      <button (click)="state.mobileCatalogOpen.set(true)" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 cursor-pointer">
-        🔍
+    <div class="flex gap-2">
+      <button 
+        (click)="state.mobileCatalogOpen.set(true)" 
+        class="px-3 py-2 bg-slate-900 border border-slate-800 text-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer hover:bg-slate-850"
+      >
+        🔍 Stock Catalog
       </button>
-      <button (click)="state.mobileCatalogOpen.set(true)" class="px-3 py-2 bg-slate-900 border border-slate-800 text-slate-200 text-xs font-extrabold rounded-xl cursor-pointer">
-        Stock Catalog
+      <button 
+        (click)="state.showBotConfigDrawer.set(true)" 
+        class="px-3 py-2 bg-slate-900 border border-slate-800 text-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer hover:bg-slate-850"
+      >
+        ⚙️ Config
       </button>
     </div>
 
-    <!-- Active Tab Selectors -->
-    <div class="flex items-center gap-2">
-      <button (click)="state.activeTab.set('home')" [ngClass]="state.activeTab() === 'home' ? 'text-emerald-400 bg-slate-900 border-slate-700/60' : 'text-slate-400 border-transparent'" class="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer border">
-        📈
-      </button>
-      <button (click)="state.activeTab.set('positions')" [ngClass]="state.activeTab() === 'positions' ? 'text-emerald-400 bg-slate-900 border-slate-700/60' : 'text-slate-400 border-transparent'" class="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer border">
-        💼
-      </button>
-      <button (click)="state.activeTab.set('scouter')" [ngClass]="state.activeTab() === 'scouter' ? 'text-emerald-400 bg-slate-900 border-slate-700/60' : 'text-slate-400 border-transparent'" class="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer border">
-        📡
-      </button>
-      <button (click)="state.activeTab.set('console')" [ngClass]="state.activeTab() === 'console' ? 'text-emerald-400 bg-slate-900 border-slate-700/60' : 'text-slate-400 border-transparent'" class="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer border">
-        🤖
-      </button>
-      <button (click)="state.activeTab.set('config')" [ngClass]="state.activeTab() === 'config' ? 'text-emerald-400 bg-slate-900 border-slate-700/60' : 'text-slate-400 border-transparent'" class="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer border">
-        ⚙️
-      </button>
+    <div class="flex items-center gap-3 text-slate-400">
+      <button (click)="state.showPositionLogsDrawer.set(true)" class="text-slate-400 hover:text-white cursor-pointer text-sm" title="Logs">📄</button>
+      <button (click)="state.syncOperations(); state.fetchWalletBalance()" class="text-slate-400 hover:text-white cursor-pointer text-sm" title="Refresh">🔄</button>
     </div>
   </div>
+
+  <!-- Mobile Drawer Overlays -->
+  <!-- Config drawer -->
+  @if (state.showBotConfigDrawer()) {
+    <div class="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm flex justify-end" (click)="state.showBotConfigDrawer.set(false)">
+      <div class="w-[300px] bg-[#141d24] h-full shadow-2xl animate-fade-in" (click)="$event.stopPropagation()">
+        <app-simulation-settings class="block h-full"></app-simulation-settings>
+      </div>
+    </div>
+  }
+
+  <!-- Positions/Logs drawer -->
+  @if (state.showPositionLogsDrawer()) {
+    <div class="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm flex items-end justify-center" (click)="state.showPositionLogsDrawer.set(false)">
+      <div class="w-full max-w-4xl bg-[#141d24] border-t border-slate-800 rounded-t-3xl h-[80vh] flex flex-col overflow-hidden animate-scale-up" (click)="$event.stopPropagation()">
+        <div class="px-5 py-4 border-b border-slate-800 flex justify-between items-center bg-[#18232c]">
+          <h3 class="text-sm font-extrabold text-white">Positions &amp; Logs Console</h3>
+          <button (click)="state.showPositionLogsDrawer.set(false)" class="text-slate-400 text-lg hover:text-white">&times;</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0d131a]/40 custom-scrollbar pb-10">
+          <app-positions-table></app-positions-table>
+          <app-operations-history></app-operations-history>
+          <app-app-console></app-app-console>
+        </div>
+      </div>
+    </div>
+  }
 
   <!-- Mobile Stock Catalog overlays are nested inside the app-stock-catalog component -->
   <app-stock-catalog></app-stock-catalog>

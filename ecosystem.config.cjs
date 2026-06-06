@@ -27,6 +27,7 @@ module.exports = {
         PORT: 3013,
         BYBIT_CONNECTOR_URL: "http://localhost:3011",
         MARKET_SCOUTER_URL: "http://localhost:3012",
+        DATABASE_URL: "postgresql://portfolio:portfolio@localhost:5433/portfolio",
         NODE_ENV: "production",
       }
     },

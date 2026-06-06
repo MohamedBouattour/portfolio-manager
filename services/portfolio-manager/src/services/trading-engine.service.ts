@@ -173,23 +173,85 @@ export class TradingEngineService {
     log.info(`Scouting phase complete. Opened ${enteredCount} new position(s).`);
   }
 
+  // ─── Loop Prevention Checks ────────────────────────────────────────
+
+  /**
+   * Determines whether a Take Profit should be skipped to prevent
+   * repeated sell orders at the same price level.
+   */
+  private shouldSkipTakeProfit(
+    pos: Position,
+    config: BotConfig,
+    currentPnL: number
+  ): { skip: boolean; reason: string } {
+    const lastSellPrice =
+      this.executionStore.get(pos.symbol)?.lastExecutionPrice
+      ?? pos.lastExecutionPrice
+      ?? pos.avgPrice; // Fallback: use avg entry price
+
+    const lastSellSide =
+      this.executionStore.get(pos.symbol)?.lastExecutionSide
+      ?? pos.lastExecutionSide;
+
+    if (lastSellPrice && lastSellSide === 'Sell') {
+      const priceRiseThreshold = config.profitThresholdPct / pos.leverage;
+      const requiredPrice = lastSellPrice * (1 + priceRiseThreshold / 100);
+      if (pos.markPrice < requiredPrice) {
+        const reason = `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% >= +${config.profitThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price $${lastSellPrice.toFixed(2)}. Skipping Take Profit.`;
+        return { skip: true, reason };
+      }
+    }
+
+    return { skip: false, reason: '' };
+  }
+
+  /**
+   * Determines whether a DCA Rebuy should be skipped to prevent
+   * repeated buy orders at the same price level.
+   *
+   * KEY FIX: Falls back to pos.avgPrice and assumes 'Buy' side when
+   * no execution history exists — prevents the buy loop bug where
+   * missing data bypassed all loop prevention.
+   */
+  private shouldSkipRebuy(
+    pos: Position,
+    config: BotConfig,
+    currentPnL: number
+  ): { skip: boolean; reason: string } {
+    const lastBuyPrice =
+      this.executionStore.get(pos.symbol)?.lastExecutionPrice
+      ?? pos.lastExecutionPrice
+      ?? pos.avgPrice; // FIX: reliable fallback to avg entry price
+
+    const lastBuySide =
+      this.executionStore.get(pos.symbol)?.lastExecutionSide
+      ?? pos.lastExecutionSide
+      ?? 'Buy'; // FIX: assume Buy if position exists but no execution history
+
+    if (lastBuyPrice && lastBuySide === 'Buy') {
+      const priceDropThreshold = config.rebuyThresholdPct / pos.leverage;
+      const requiredPrice = lastBuyPrice * (1 - priceDropThreshold / 100);
+      if (pos.markPrice > requiredPrice) {
+        const reason = `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% <= -${config.rebuyThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price $${lastBuyPrice.toFixed(2)}. Skipping DCA Rebuy.`;
+        return { skip: true, reason };
+      }
+    }
+
+    return { skip: false, reason: '' };
+  }
+
+  // ─── Position Management Handlers ──────────────────────────────────
+
   private async handleTakeProfit(pos: Position, spec: InstrumentSpec, currentPnL: number, config: BotConfig): Promise<void> {
     if (config.manualMode) {
       log.info(`[Manual Mode] Take Profit trigger met for ${pos.symbol} (PnL: ${currentPnL.toFixed(2)}%). Skipping automatic order execution.`);
       return;
     }
 
-    const lastSellPrice = this.executionStore.get(pos.symbol)?.lastExecutionPrice ?? pos.lastExecutionPrice;
-    const lastSellSide = this.executionStore.get(pos.symbol)?.lastExecutionSide ?? pos.lastExecutionSide;
-    if (lastSellPrice && lastSellSide === 'Sell') {
-      const priceRiseThreshold = config.profitThresholdPct / pos.leverage;
-      const requiredPrice = lastSellPrice * (1 + priceRiseThreshold / 100);
-      if (pos.markPrice < requiredPrice) {
-        log.info(
-          `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% >= +${config.profitThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not risen >= ${priceRiseThreshold.toFixed(2)}% above last Sell price $${lastSellPrice.toFixed(2)}. Skipping Take Profit.`
-        );
-        return;
-      }
+    const { skip, reason } = this.shouldSkipTakeProfit(pos, config, currentPnL);
+    if (skip) {
+      log.info(reason);
+      return;
     }
 
     const rawReduceQty = pos.size * (config.reducePct / 100);
@@ -212,6 +274,18 @@ export class TradingEngineService {
 
     if (result) {
       this.executionStore.set(pos.symbol, pos.markPrice, orderSide);
+      await this.executionStore.recordOperation({
+        symbol: pos.symbol,
+        side: orderSide,
+        action: 'TAKE_PROFIT',
+        qty,
+        price: pos.markPrice,
+        avgPriceBefore: pos.avgPrice,
+        pnlPctBefore: currentPnL,
+        leverage: pos.leverage,
+        orderId: result.orderId,
+        source: 'bot',
+      });
       log.ok(`✔ TAKE-PROFIT executed successfully for ${pos.symbol} (PnL: ${currentPnL.toFixed(2)}%)`, result);
     }
   }
@@ -222,17 +296,10 @@ export class TradingEngineService {
       return;
     }
 
-    const lastBuyPrice = this.executionStore.get(pos.symbol)?.lastExecutionPrice ?? pos.lastExecutionPrice;
-    const lastBuySide = this.executionStore.get(pos.symbol)?.lastExecutionSide ?? pos.lastExecutionSide;
-    if (lastBuyPrice && lastBuySide === 'Buy') {
-      const priceDropThreshold = config.rebuyThresholdPct / pos.leverage;
-      const requiredPrice = lastBuyPrice * (1 - priceDropThreshold / 100);
-      if (pos.markPrice > requiredPrice) {
-        log.info(
-          `[Loop Prevention] ${pos.symbol}: PnL is ${currentPnL.toFixed(2)}% <= -${config.rebuyThresholdPct}%, but current price $${pos.markPrice.toFixed(2)} has not dropped >= ${priceDropThreshold.toFixed(2)}% below last Buy price $${lastBuyPrice.toFixed(2)}. Skipping DCA Rebuy.`
-        );
-        return;
-      }
+    const { skip, reason } = this.shouldSkipRebuy(pos, config, currentPnL);
+    if (skip) {
+      log.info(reason);
+      return;
     }
 
     const rawRebuyQty = pos.size * (config.rebuyQtyPct / 100);
@@ -260,6 +327,25 @@ export class TradingEngineService {
 
     if (result) {
       this.executionStore.set(pos.symbol, pos.markPrice, pos.side);
+
+      // Calculate new avg price after DCA
+      const newSize = pos.size + qty;
+      const newAvgPrice = ((pos.size * pos.avgPrice) + (qty * pos.markPrice)) / newSize;
+
+      await this.executionStore.recordOperation({
+        symbol: pos.symbol,
+        side: pos.side,
+        action: 'DCA_REBUY',
+        qty,
+        price: pos.markPrice,
+        avgPriceBefore: pos.avgPrice,
+        avgPriceAfter: newAvgPrice,
+        pnlPctBefore: currentPnL,
+        marginUsed: marginNeeded,
+        leverage: pos.leverage,
+        orderId: result.orderId,
+        source: 'bot',
+      });
       log.ok(`✔ DCA REBUY executed successfully for ${pos.symbol} (PnL: ${currentPnL.toFixed(2)}%)`, result);
     }
   }
@@ -305,6 +391,19 @@ export class TradingEngineService {
     });
 
     if (result) {
+      // FIX: Record the entry in execution store to prevent buy loops
+      this.executionStore.set(symbol, lastPrice, 'Buy');
+      await this.executionStore.recordOperation({
+        symbol,
+        side: 'Buy',
+        action: 'ENTRY',
+        qty,
+        price: lastPrice,
+        marginUsed: marginNeeded,
+        leverage: config.leverage,
+        orderId: result.orderId,
+        source: 'bot',
+      });
       log.ok(`✔ NEW LONG position opened for ${symbol}`, result);
       return true;
     }

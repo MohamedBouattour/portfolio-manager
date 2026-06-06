@@ -20,7 +20,7 @@ import { Position } from '../../types.js';
           </span>
         </div>
         <button 
-          (click)="state.fetchOpenPositions(); state.fetchWalletBalance()" 
+          (click)="state.syncOperations(); state.fetchWalletBalance()" 
           class="px-3 py-1.5 bg-[#0f161c] hover:bg-slate-800 text-[#8696a0] hover:text-white border border-slate-800 text-xs font-bold rounded-lg cursor-pointer transition-all"
         >
           🔄 Refresh
@@ -50,6 +50,7 @@ import { Position } from '../../types.js';
                     <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">PnL</th>
                     <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">DCA New Avg</th>
                     <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">New ROI</th>
+                    <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">Ops</th>
                     <th class="p-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap text-right">Execute</th>
                   </tr>
                 </thead>
@@ -60,6 +61,8 @@ import { Position } from '../../types.js';
                     @let isDca = decision.action === 'DCA_REBUY';
                     @let isTp = decision.action === 'REDUCE';
                     @let dca = getDcaDetails(pos);
+                    @let opsInfo = getOpsInfo(pos);
+                    @let targets = getTargetPrices(pos);
                     
                     <tr
                       (click)="state.selectAsset(pos.symbol)"
@@ -143,6 +146,41 @@ import { Position } from '../../types.js';
                           <div class="text-[10px] font-semibold text-slate-500 font-mono mt-0.5">
                             New Margin: \${{ ((pos.size + dca.qty) * dca.newAvgPrice / pos.leverage).toFixed(2) }}
                           </div>
+                          <div class="text-[9px] font-medium text-slate-400 font-mono mt-1 flex flex-col gap-0.5 leading-none">
+                            <span class="text-sky-400/90">{{ pos.side === 'Buy' ? 'Buy' : 'Sell' }} (DCA) {{ pos.side === 'Buy' ? '<=' : '>=' }} \${{ targets.dca.toFixed(2) }}</span>
+                            <span class="text-emerald-400/90">{{ pos.side === 'Buy' ? 'Sell' : 'Buy' }} (TP) {{ pos.side === 'Buy' ? '>=' : '<=' }} \${{ targets.tp.toFixed(2) }}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <!-- Operations Column -->
+                      <td class="p-3 whitespace-nowrap">
+                        <div class="flex flex-col gap-0.5">
+                          <div class="flex items-center gap-1.5">
+                            @let otherOps = opsInfo.totalOps - opsInfo.dcaCount - opsInfo.tpCount;
+                            @if (otherOps > 0) {
+                              <span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                {{ otherOps }}× Entry
+                              </span>
+                            }
+                            @if (opsInfo.dcaCount > 0) {
+                              <span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                                {{ opsInfo.dcaCount }}× DCA
+                              </span>
+                            }
+                            @if (opsInfo.tpCount > 0) {
+                              <span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                {{ opsInfo.tpCount }}× TP
+                              </span>
+                            }
+                            @if (opsInfo.totalOps === 0) {
+                              <span class="text-[10px] font-semibold text-slate-600">No ops</span>
+                            }
+                          </div>
+                          @if (opsInfo.lastActionTime) {
+                            <div class="text-[10px] text-slate-500 font-mono">
+                              {{ getRelativeTime(opsInfo.lastActionTime) }}
+                            </div>
+                          }
                         </div>
                       </td>
                       <td class="p-3 whitespace-nowrap text-right">
@@ -238,6 +276,109 @@ export class PositionsTableComponent {
       newAvgPrice,
       newPnlPct
     };
+  }
+
+  getOpsInfo(pos: any): { dcaCount: number; tpCount: number; totalOps: number; lastActionTime: string | null; lastAction: string | null } {
+    // First try enriched data from the API (set by portfolio controller)
+    if (pos.dcaCount !== undefined) {
+      return {
+        dcaCount: pos.dcaCount || 0,
+        tpCount: pos.tpCount || 0,
+        totalOps: pos.totalOps || 0,
+        lastActionTime: pos.lastActionTime || null,
+        lastAction: pos.lastAction || null,
+      };
+    }
+    // Fallback to operations summary from state
+    const summary = this.state.getSymbolOpsSummary(pos.symbol);
+    if (summary) {
+      return {
+        dcaCount: summary.dcaCount || 0,
+        tpCount: summary.tpCount || 0,
+        totalOps: summary.totalOps || 0,
+        lastActionTime: summary.lastActionTime || null,
+        lastAction: summary.lastAction || null,
+      };
+    }
+    return { dcaCount: 0, tpCount: 0, totalOps: 0, lastActionTime: null, lastAction: null };
+  }
+
+  getTargetPrices(pos: any): { dca: number; tp: number } {
+    const rebuyThreshold = this.state.rebuyThresholdPct();
+    const profitThreshold = this.state.profitThresholdPct();
+    const leverage = pos.leverage || 3;
+    
+    // 1. Static PnL-based thresholds
+    let dcaPnL = 0;
+    let tpPnL = 0;
+    
+    if (pos.side === 'Buy') {
+      dcaPnL = pos.avgPrice / (1 + rebuyThreshold / (leverage * 100));
+      const tpDivisor = 1 - profitThreshold / (leverage * 100);
+      tpPnL = tpDivisor > 0 ? pos.avgPrice / tpDivisor : pos.avgPrice * 2;
+    } else {
+      const dcaDivisor = 1 - rebuyThreshold / (leverage * 100);
+      dcaPnL = dcaDivisor > 0 ? pos.avgPrice / dcaDivisor : pos.avgPrice * 2;
+      tpPnL = pos.avgPrice / (1 + profitThreshold / (leverage * 100));
+    }
+
+    // 2. Loop prevention constraints
+    const lastExecPrice = pos.lastExecutionPrice;
+    const lastExecSide = pos.lastExecutionSide;
+    
+    let dca = dcaPnL;
+    let tp = tpPnL;
+    
+    if (pos.side === 'Buy') {
+      // Loop prevention for Buy (DCA)
+      const effectiveLastSideDca = lastExecSide ?? 'Buy';
+      if (lastExecPrice && effectiveLastSideDca === 'Buy') {
+        const priceDropThreshold = rebuyThreshold / leverage;
+        const requiredDcaPrice = lastExecPrice * (1 - priceDropThreshold / 100);
+        dca = Math.min(dcaPnL, requiredDcaPrice);
+      }
+      
+      // Loop prevention for Sell (TP)
+      if (lastExecPrice && lastExecSide === 'Sell') {
+        const priceRiseThreshold = profitThreshold / leverage;
+        const requiredTpPrice = lastExecPrice * (1 + priceRiseThreshold / 100);
+        tp = Math.max(tpPnL, requiredTpPrice);
+      }
+    } else {
+      // For SHORT positions
+      // Loop prevention for Sell (DCA)
+      const effectiveLastSideDca = lastExecSide ?? 'Sell';
+      if (lastExecPrice && effectiveLastSideDca === 'Sell') {
+        const priceRiseThreshold = rebuyThreshold / leverage;
+        const requiredDcaPrice = lastExecPrice * (1 + priceRiseThreshold / 100);
+        dca = Math.max(dcaPnL, requiredDcaPrice);
+      }
+      
+      // Loop prevention for Buy (TP)
+      if (lastExecPrice && lastExecSide === 'Buy') {
+        const priceDropThreshold = profitThreshold / leverage;
+        const requiredTpPrice = lastExecPrice * (1 - priceDropThreshold / 100);
+        tp = Math.min(tpPnL, requiredTpPrice);
+      }
+    }
+    
+    return { dca, tp };
+  }
+
+  getRelativeTime(dateStr?: string | null): string {
+    if (!dateStr) return '';
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diffMs = now - then;
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffMin < 1) return 'just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHour < 24) return `${diffHour}h ago`;
+    if (diffDay < 7) return `${diffDay}d ago`;
+    return `${Math.floor(diffDay / 7)}w ago`;
   }
 
   getPositionWeight(pos: { positionValue: number }): number {

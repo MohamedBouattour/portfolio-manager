@@ -16,6 +16,13 @@ export class ConnectorExchangeService {
     return res.data;
   }
 
+  async getExecutions(symbol: string, limit = 50): Promise<any[]> {
+    const res = await axios.get(`${CONNECTOR_URL}/api/executions`, {
+      params: { symbol, limit }
+    });
+    return res.data;
+  }
+
   async getInstrumentSpec(symbol: string): Promise<InstrumentSpec | null> {
     try {
       const res = await axios.get(`${CONNECTOR_URL}/api/instrument`, {

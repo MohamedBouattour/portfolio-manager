@@ -194,7 +194,7 @@ export class ScoutingService {
         if (!fs.existsSync(logsDir)) {
           fs.mkdirSync(logsDir, { recursive: true });
         }
-        const logFilePath = path.join(logsDir, `${logTimestamp}.log`);
+        const logFilePath = path.join(logsDir, `${logTimestamp}-scout.log`);
         fs.writeFileSync(logFilePath, logLines.join('\n'), 'utf8');
       } catch (logErr: any) {
         console.error('Failed to write backend scout log file:', logErr);

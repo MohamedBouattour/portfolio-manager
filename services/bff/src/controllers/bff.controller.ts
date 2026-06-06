@@ -34,11 +34,7 @@ export class BffController {
       return res.data;
     } catch (_err: any) {
       // Fallback
-      return [
-        'AAPLUSDT', 'TSLAUSDT', 'NVDAUSDT', 'AMZNUSDT', 'GOOGLUSDT',
-        'MSFTUSDT', 'METAUSDT', 'COINUSDT', 'MSTRUSDT', 'AMDUSDT',
-        'INTCUSDT', 'PLTRUSDT', 'QQQUSDT', 'SPYUSDT', 'TSMUSDT',
-      ];
+      return [];
     }
   }
 
@@ -138,6 +134,43 @@ export class BffController {
   async runCycle() {
     try {
       const res = await axios.post(`${PORTFOLIO_MANAGER_URL}/api/run-cycle`);
+      return res.data;
+    } catch (err: any) {
+      throw new HttpException(err.response?.data || err.message, err.response?.status || HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // ─── Operations History Passthrough ────────────────────────────
+
+  @Get('operations')
+  async getOperations(@Query('symbol') symbol?: string, @Query('limit') limit?: string) {
+    try {
+      const params: any = {};
+      if (symbol) params.symbol = symbol;
+      if (limit) params.limit = limit;
+      const res = await axios.get(`${PORTFOLIO_MANAGER_URL}/api/operations`, { params });
+      return res.data;
+    } catch (err: any) {
+      throw new HttpException(err.response?.data || err.message, err.response?.status || HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Get('operations/summary')
+  async getOperationsSummary() {
+    try {
+      const res = await axios.get(`${PORTFOLIO_MANAGER_URL}/api/operations/summary`);
+      return res.data;
+    } catch (err: any) {
+      throw new HttpException(err.response?.data || err.message, err.response?.status || HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('operations/sync')
+  async syncOperations(@Query('symbol') symbol?: string) {
+    try {
+      const res = await axios.post(`${PORTFOLIO_MANAGER_URL}/api/operations/sync`, null, {
+        params: symbol ? { symbol } : {}
+      });
       return res.data;
     } catch (err: any) {
       throw new HttpException(err.response?.data || err.message, err.response?.status || HttpStatus.INTERNAL_SERVER_ERROR);

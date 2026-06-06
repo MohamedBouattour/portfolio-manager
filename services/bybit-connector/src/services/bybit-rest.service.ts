@@ -95,6 +95,24 @@ export class BybitRestService {
     }
   }
 
+  public async getExecutions(symbol: string, limit = 50): Promise<any[]> {
+    try {
+      const res = await this.client.getExecutionList({
+        category: 'linear',
+        symbol,
+        limit,
+      });
+      if (res.retCode !== 0) {
+        console.error(`[BybitRestService] getExecutionList failed for ${symbol}:`, res.retMsg);
+        return [];
+      }
+      return res.result?.list ?? [];
+    } catch (err) {
+      console.error(`[BybitRestService] getExecutionList exception for ${symbol}:`, err);
+      return [];
+    }
+  }
+
   public async getInstrumentSpec(symbol: string): Promise<InstrumentSpec | null> {
     if (this.specCache.has(symbol)) {
       return this.specCache.get(symbol)!;

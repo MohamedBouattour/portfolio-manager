@@ -4,12 +4,20 @@ import { PortfolioController, HealthController } from './controllers/portfolio.c
 import { ConnectorExchangeService } from './services/connector-exchange.service.js';
 import { ScouterStrategyService } from './services/scouter-strategy.service.js';
 import { TradingEngineService } from './services/trading-engine.service.js';
+import { DatabaseService } from './services/db.service.js';
 import { ExecutionStoreService } from './services/execution-store.service.js';
 import { CronJobService } from './services/cron-job.service.js';
 
 @Module({
   imports: [ScheduleModule.forRoot()],
   controllers: [PortfolioController, HealthController],
-  providers: [ConnectorExchangeService, ScouterStrategyService, TradingEngineService, ExecutionStoreService, CronJobService],
+  providers: [
+    ConnectorExchangeService,
+    ScouterStrategyService,
+    TradingEngineService,
+    DatabaseService,
+    ExecutionStoreService,
+    CronJobService,
+  ],
 })
 export class AppModule {}
