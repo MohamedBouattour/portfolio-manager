@@ -4,7 +4,7 @@ import { ScouterStrategyService } from './scouter-strategy.service.js';
 import { ExecutionStoreService } from './execution-store.service.js';
 import { Position, InstrumentSpec, BotConfig } from '@portfolio/contracts';
 import { getTimeframe } from '@portfolio/contracts/utils';
-import { roundQty } from '../utils/math.js';
+import { roundQty, parseNumericEnv } from '../utils/math.js';
 import { log } from '../utils/logger.js';
 
 @Injectable()
@@ -25,14 +25,14 @@ export class TradingEngineService {
       stockSymbols: (process.env.STOCK_SYMBOLS || 'ALL').split(',').map(s => s.trim()),
       interval: getTimeframe(),
       dryRun: process.env.DRY_RUN === 'true',
-      balance: parseFloat(process.env.BALANCE || '689'),
-      leverage: parseInt(process.env.LEVERAGE || '3', 10),
-      feePct: parseFloat(process.env.FEE_PCT || '0.04'),
-      profitThresholdPct: parseFloat(process.env.PROFIT_THRESHOLD_PCT || '15'),
-      rebuyThresholdPct: parseFloat(process.env.REBUY_THRESHOLD_PCT || '15'),
-      reducePct: parseFloat(process.env.REDUCE_PCT || process.env.POSITION_REDUCE_PCT || '15'),
-      rebuyQtyPct: parseFloat(process.env.REBUY_QTY_PCT || '15'),
-      maxAllocPct: parseFloat(process.env.MAX_ALLOC_PCT || '5'),
+      balance: parseNumericEnv(process.env.BALANCE, 689),
+      leverage: Math.round(parseNumericEnv(process.env.LEVERAGE, 3)),
+      feePct: parseNumericEnv(process.env.FEE_PCT, 0.04),
+      profitThresholdPct: parseNumericEnv(process.env.PROFIT_THRESHOLD_PCT, 15),
+      rebuyThresholdPct: parseNumericEnv(process.env.REBUY_THRESHOLD_PCT, 15),
+      reducePct: parseNumericEnv(process.env.REDUCE_PCT || process.env.POSITION_REDUCE_PCT, 15),
+      rebuyQtyPct: parseNumericEnv(process.env.REBUY_QTY_PCT, 15),
+      maxAllocPct: parseNumericEnv(process.env.MAX_ALLOC_PCT, 5),
       manualMode: process.env.MANUAL_MODE === 'true',
     };
 

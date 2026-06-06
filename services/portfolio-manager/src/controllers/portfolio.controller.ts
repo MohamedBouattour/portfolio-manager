@@ -3,7 +3,7 @@ import { ConnectorExchangeService } from '../services/connector-exchange.service
 import { TradingEngineService } from '../services/trading-engine.service.js';
 import { ExecutionStoreService } from '../services/execution-store.service.js';
 import { getLogsDir, getTimeframe, setTimeframe } from '@portfolio/contracts/utils';
-import { roundQty } from '../utils/math.js';
+import { roundQty, parseNumericEnv } from '../utils/math.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -18,20 +18,20 @@ export class PortfolioController {
   @Get('config')
   getConfig() {
     const isManual = process.env.MANUAL_MODE?.trim().toLowerCase() === 'true';
-    const rebuyQtyPct = parseFloat(process.env.REBUY_QTY_PCT ?? '15');
+    const rebuyQtyPct = parseNumericEnv(process.env.REBUY_QTY_PCT, 15);
     const tf = getTimeframe();
     console.log(`[Portfolio Config] Request received. timeframe: ${tf}, MANUAL_MODE env: '${process.env.MANUAL_MODE}', parsed: ${isManual}, rebuyQtyPct: ${rebuyQtyPct}`);
     return {
       timeframe: tf,
       manualMode: isManual,
       rebuyQtyPct,
-      balance: parseFloat(process.env.BALANCE || '689'),
-      leverage: parseInt(process.env.LEVERAGE || '3', 10),
-      feePct: parseFloat(process.env.FEE_PCT || '0.04'),
-      profitThresholdPct: parseFloat(process.env.PROFIT_THRESHOLD_PCT || '15'),
-      rebuyThresholdPct: parseFloat(process.env.REBUY_THRESHOLD_PCT || '15'),
-      reducePct: parseFloat(process.env.REDUCE_PCT || process.env.POSITION_REDUCE_PCT || '15'),
-      maxAllocPct: parseFloat(process.env.MAX_ALLOC_PCT || '5'),
+      balance: parseNumericEnv(process.env.BALANCE, 689),
+      leverage: Math.round(parseNumericEnv(process.env.LEVERAGE, 3)),
+      feePct: parseNumericEnv(process.env.FEE_PCT, 0.04),
+      profitThresholdPct: parseNumericEnv(process.env.PROFIT_THRESHOLD_PCT, 15),
+      rebuyThresholdPct: parseNumericEnv(process.env.REBUY_THRESHOLD_PCT, 15),
+      reducePct: parseNumericEnv(process.env.REDUCE_PCT || process.env.POSITION_REDUCE_PCT, 15),
+      maxAllocPct: parseNumericEnv(process.env.MAX_ALLOC_PCT, 5),
     };
   }
 
@@ -58,10 +58,10 @@ export class PortfolioController {
   async getPositions() {
     try {
       const positions = await this.exchange.getOpenPositions();
-      const profitThresholdPct = parseFloat(process.env.PROFIT_THRESHOLD_PCT || '15');
-      const rebuyThresholdPct = parseFloat(process.env.REBUY_THRESHOLD_PCT || '15');
-      const reducePct = parseFloat(process.env.REDUCE_PCT || process.env.POSITION_REDUCE_PCT || '15');
-      const rebuyQtyPct = parseFloat(process.env.REBUY_QTY_PCT || '15');
+      const profitThresholdPct = parseNumericEnv(process.env.PROFIT_THRESHOLD_PCT, 15);
+      const rebuyThresholdPct = parseNumericEnv(process.env.REBUY_THRESHOLD_PCT, 15);
+      const reducePct = parseNumericEnv(process.env.REDUCE_PCT || process.env.POSITION_REDUCE_PCT, 15);
+      const rebuyQtyPct = parseNumericEnv(process.env.REBUY_QTY_PCT, 15);
 
       const enriched = positions.map((pos) => {
         const initialMargin = pos.positionValue / pos.leverage;
