@@ -3,7 +3,9 @@
 <!-- ========================================== -->
 <div class="hidden lg:flex w-full min-h-screen bg-[#0b0f14] text-slate-100 p-5 gap-5 font-sans">
   <!-- Left Column: Stock Catalog Sidebar -->
-  <app-stock-catalog></app-stock-catalog>
+  <app-stock-catalog 
+    class="shrink-0 block h-[calc(100vh-40px)]"
+  ></app-stock-catalog>
 
   <!-- Center Column: Momentum Ticker, Chart, and Grids -->
   <div class="flex-1 min-w-0 flex flex-col gap-5 overflow-y-auto max-h-[calc(100vh-40px)] custom-scrollbar pr-1">
@@ -25,7 +27,7 @@
   </div>
 
   <!-- Right Column: Configuration & Status Sidebar -->
-  <div [ngClass]="state.rightSidebarCollapsed() ? 'w-[60px]' : 'w-[300px]'" class="shrink-0 transition-all duration-300 h-[calc(100vh-40px)]">
+  <div [ngClass]="state.rightSidebarCollapsed() ? 'w-[60px]' : 'w-[300px]'" class="shrink-0 transition-all duration-300 h-[calc(100vh-40px)] z-20">
     <app-simulation-settings></app-simulation-settings>
   </div>
 </div>

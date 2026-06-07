@@ -132,6 +132,7 @@ export class StateService {
   isLoading = signal<boolean>(false);
   isChartLoading = signal<boolean>(false);
   rightSidebarCollapsed = signal<boolean>(localStorage.getItem('rightSidebarCollapsed') === 'true');
+  leftSidebarCollapsed = signal<boolean>(localStorage.getItem('leftSidebarCollapsed') === 'true');
   isEvaluating = signal<boolean>(false);
   error = signal<string | null>(null);
 
@@ -248,6 +249,9 @@ export class StateService {
     // Save collapsible sidebar state to local storage
     effect(() => {
       localStorage.setItem('rightSidebarCollapsed', String(this.rightSidebarCollapsed()));
+    });
+    effect(() => {
+      localStorage.setItem('leftSidebarCollapsed', String(this.leftSidebarCollapsed()));
     });
 
     // Re-evaluate automatically when index or position parameters change
